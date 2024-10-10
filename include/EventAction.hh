@@ -58,8 +58,13 @@ namespace G4Sim
 
 // Use enum to define the constants
 enum EventType {
-    DIRECT_GAMMA = 0,
-    SCATTERED_GAMMA = 1
+    // Primary Classification (bits 0-1)
+    DIRECT_GAMMA = 1 << 0,
+    SCATTERED_GAMMA = 1 << 1,
+
+    // Bremsstrahlung Classification (bits 2-3)
+    BREM_GAMMA = 1 << 2,
+    BREM_GAMMA_ESCAPED = 1 << 3
 };
 
 /**
@@ -112,7 +117,9 @@ class EventAction : public G4UserEventAction
     void SetAvailableEnergy(G4double e) { fAvailableEnergy = e; }
     void ReduceAvailableEnergy(G4double e) { fAvailableEnergy -= e; } 
     void SetHasBeenInXenon(G4bool b) { fHasBeenInXenon = b; }
-    void SetEventType(G4int type) { fEventType = type; }
+    void AddEventType(EventType type) { fEventType |= type; }
+    void SetPrimaryClassification(EventType type);
+    
 
     G4double GetSpatialThreshold(const G4String& collectionName);
     G4double GetTimeThreshold(const G4String& collectionName);

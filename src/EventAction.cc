@@ -87,9 +87,12 @@ void EventAction::ResetVariables() {
   fNumberOfScatters = 0;
   // this is used in the standard MC to see if the gamma ray has already been in xenon or not
   fHasBeenInXenon = false;
-  // set the type of event: "direct_gamma (=0)",  "scattered_gamma (=1)",
-  // this is set to "direct_gamma" in the beginning and changed to "scattered_gamma" if a scatter is made	prior to entering the xenon target	
-  fEventType = DIRECT_GAMMA;
+  // Reset all bits in the event type 
+  // This is set to "direct_gamma" in the beginning and changed to "scattered_gamma" if a scatter is made
+  // Other classifications can also be added, like if there was a brem in the event or if a brem escaped.
+  fEventType = 0;
+  SetPrimaryClassification(DIRECT_GAMMA);
+
   // the avalaible energy is the maximum energy that can be deposited in the event
   // it will be reduced after every energy deposit
 
@@ -98,7 +101,6 @@ void EventAction::ResetVariables() {
   //G4cout << "EventAction::ResetVariables: fMaxEnergy = " << fMaxEnergy << G4endl;
 
   fLogWeight = 0.0;
-  fEventType = 0;
   fXp = 0.0;
   fYp = 0.0;
   fZp = 0.0;
@@ -498,5 +500,13 @@ std::map<G4String, std::pair<G4double, G4double>> EventAction::fClusteringParame
 void EventAction::SetClusteringParameters(const std::map<G4String, std::pair<G4double, G4double>>& params) {
     fClusteringParameters = params;
 }
+
+void EventAction::SetPrimaryClassification(EventType type) {
+    // Clear bits 0 and 1
+    fEventType &= ~(DIRECT_GAMMA | SCATTERED_GAMMA);
+    // Set the new primary classification
+    fEventType |= type;
+}
+
 
 } // namespace G4Sim

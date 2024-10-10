@@ -408,7 +408,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     // after checking if the particle is/has been inside the xenon volume, check if the track ID is 1, the process type is "compt",
     //if ((processType == "compt") && (!fEventAction->HasBeenInXenon())) {
     if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LXe"))) {
-      fEventAction->SetEventType(SCATTERED_GAMMA);
+      fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
     }
     //if ((processType == "compt") || processType == "phot") && (fEventAction->HasBeenInXenon()) {
     //  fEventAction->SetEventType(DIRECT_GAMMA);
