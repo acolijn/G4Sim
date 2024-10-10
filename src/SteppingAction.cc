@@ -393,7 +393,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     G4String volume_name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
     // check if particle is inside the xenon volume
-    if ((volume_name == "LXeFiducial") || (volume_name == "LXe")) {
+    if ((volume_name == "LXeFiducial") || (volume_name == "LiquidXenon")) {
       // the particle saw liquid xenon
       fEventAction->SetHasBeenInXenon(true);
 
@@ -409,7 +409,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     // after checking if the particle is/has been inside the xenon volume, check if the track ID is 1, the process type is "compt",
     //if ((processType == "compt") && (!fEventAction->HasBeenInXenon())) {
     // check_ezra
-    if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LXe"))) {
+    if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LiquidXenon"))) {
       fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
     }
     //if ((processType == "compt") || processType == "phot") && (fEventAction->HasBeenInXenon()) {
