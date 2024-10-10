@@ -120,6 +120,11 @@ class EventAction : public G4UserEventAction
     void AddEventType(EventType type) { fEventType |= type; }
     void SetPrimaryClassification(EventType type);
     
+    void AddBremsGammaToTrack(G4int trackID);
+    void AddBremsGammaThatEscaped(G4int trackID);
+
+    bool IsBremsGammaToTrack(G4int trackID) const;
+    void ResetBremsGammaTracking();
 
     G4double GetSpatialThreshold(const G4String& collectionName);
     G4double GetTimeThreshold(const G4String& collectionName);
@@ -166,6 +171,9 @@ class EventAction : public G4UserEventAction
     std::vector<G4int> fNphot;
     std::vector<G4int> fNcomp;
 
+    std::set<G4int> fBremsGammasToTrack;   
+    std::set<G4int> fBremsGammasThatEscaped; 
+    
     G4bool fFastSimulation = false;
     G4bool fInitializedGraphs = false;
     G4int fNumberOfScattersMax = 0;

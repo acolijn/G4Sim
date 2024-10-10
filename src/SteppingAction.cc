@@ -382,9 +382,9 @@ void SteppingAction::AddHitToCollection(Hit* newHit, G4String collectionName){
 void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     
   // identify a gamma ray with a compton scatter outside the primary particle outside the xenon.......
-
-  G4int trackID = step->GetTrack()->GetTrackID();
-
+  const G4Track* track = step->GetTrack();
+  G4int trackID = track->GetTrackID();
+  
   if(verbosityLevel >= 2) Print(step);
 
   // check the primary gamma ray....
@@ -400,6 +400,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
       G4String volume_post = step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
       // if this gamma leaves the xenon volume..... just kill it to make sure it never comes back.
+      // check_ezra
       if (volume_post == "InnerCryostat") {
         step->GetTrack()->SetTrackStatus(fStopAndKill);
       }
@@ -407,12 +408,64 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
 
     // after checking if the particle is/has been inside the xenon volume, check if the track ID is 1, the process type is "compt",
     //if ((processType == "compt") && (!fEventAction->HasBeenInXenon())) {
+    // check_ezra
     if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LXe"))) {
       fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
     }
     //if ((processType == "compt") || processType == "phot") && (fEventAction->HasBeenInXenon()) {
     //  fEventAction->SetEventType(DIRECT_GAMMA);
     //}
+
+    if (fEventAction->IsBremsGammaToTrack(trackID))
+    {
+        // Get pre-step and post-step volumes
+        G4VPhysicalVolume* preVolume = step->GetPreStepPoint()->GetPhysicalVolume();
+        G4VPhysicalVolume* postVolume = step->GetPostStepPoint()->GetPhysicalVolume();
+
+        G4String preVolumeName = preVolume ? preVolume->GetName() : "OutOfWorld";
+        G4String postVolumeName = postVolume ? postVolume->GetName() : "OutOfWorld";
+
+        // Check if gamma is exiting the liquid xenon volume
+        if ((preVolumeName == "LiquidXenon" || preVolumeName == "LXeFiducial") &&
+            (postVolumeName != "LiquidXenon" && postVolumeName != "LXeFiducial"))
+        {
+            
+            // Gamma has exited the liquid xenon
+            fEventAction->AddBremsGammaThatEscaped(trackID);
+            fEventAction->AddEventType(BREM_GAMMA_ESCAPED);
+            
+            // Print information about the escaped gamma
+            if (verbosityLevel >= 2)
+            {             
+              G4cout << "----------------------------------------" << G4endl;
+              G4cout << "The event has been in xenon:" << fEventAction->HasBeenInXenon() << G4endl;
+              G4cout << "Bremsstrahlung gamma with TrackID " << trackID << " has escaped the Liquid Xenon." << G4endl;
+              G4cout << "Parent ID:" << step->GetTrack()->GetParentID() << G4endl;
+              G4cout << "Event ID: " << G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID() << G4endl;
+              G4cout << "Particle Name: " << track->GetDefinition()->GetParticleName() << G4endl;
+              G4cout << "Energy (KeV): " << track->GetKineticEnergy() / CLHEP::keV << G4endl;
+              G4cout << "Position (mm): " << track->GetPosition() / CLHEP::mm << G4endl;
+              
+              // Print the momentum vector
+              G4ThreeVector momentum = track->GetMomentum();
+              G4cout << "Momentum (KeV/c): " << momentum / CLHEP::keV << G4endl;
+              
+              G4cout << "----------------------------------------" << G4endl;
+            }
+        }
+
+          // if (postVolumeName != "LiquidXenon" && postVolumeName != "LXeFiducial"){
+          //   // Print step information
+          //   G4cout << "Step of escaped gamma - TrackID: " << trackID << G4endl;
+          //   G4cout << "  Step Number: " << track->GetCurrentStepNumber() << G4endl;
+          //   G4cout << "  Position (mm): " << track->GetPosition() / CLHEP::mm << G4endl;
+          //   G4cout << "  Energy (keV): " << track->GetKineticEnergy() / CLHEP::keV << G4endl;
+          //   G4cout << "  Momentum Direction: " << track->GetMomentumDirection() << G4endl;
+          //   G4cout << "  Volume: " << track->GetVolume()->GetName() << G4endl;
+          //   G4cout << "  Process: " << step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName() << G4endl;
+          // }
+      
+      }
   } 
   //G4String vol0 = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
   //G4String vol1 = step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();

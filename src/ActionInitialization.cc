@@ -69,6 +69,9 @@ void ActionInitialization::Build() const
   // Create stepping action with GammaRayHelper from EventAction and GammaRayHelper  
   SteppingAction* steppingAction = new SteppingAction(eventAction, fGammaRayHelper);
   SetUserAction(steppingAction);
+  
+  // Set the TrackingAction with the EventAction
+  SetUserAction(new TrackingAction(eventAction));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

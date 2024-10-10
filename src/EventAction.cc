@@ -93,6 +93,9 @@ void EventAction::ResetVariables() {
   fEventType = 0;
   SetPrimaryClassification(DIRECT_GAMMA);
 
+  // reset the bremstrahlung IDs that were tracked last event
+  ResetBremsGammaTracking();
+
   // the avalaible energy is the maximum energy that can be deposited in the event
   // it will be reduced after every energy deposit
 
@@ -508,5 +511,24 @@ void EventAction::SetPrimaryClassification(EventType type) {
     fEventType |= type;
 }
 
+void EventAction::AddBremsGammaToTrack(G4int trackID)
+{
+    fBremsGammasToTrack.insert(trackID);
+}
 
+bool EventAction::IsBremsGammaToTrack(G4int trackID) const
+{
+    return fBremsGammasToTrack.find(trackID) != fBremsGammasToTrack.end();
+}
+
+void EventAction::AddBremsGammaThatEscaped(G4int trackID)
+{
+    fBremsGammasThatEscaped.insert(trackID);
+}
+
+void EventAction::ResetBremsGammaTracking()
+{
+    fBremsGammasToTrack.clear();
+    fBremsGammasThatEscaped.clear();
+}
 } // namespace G4Sim

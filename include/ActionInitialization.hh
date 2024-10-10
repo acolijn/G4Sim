@@ -4,6 +4,7 @@
 #include "G4VUserActionInitialization.hh"
 #include "GammaRayHelper.hh"
 #include "EventAction.hh"
+#include "TrackingAction.hh"
 
 /**
  * @namespace G4Sim
