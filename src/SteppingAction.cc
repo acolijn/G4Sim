@@ -400,7 +400,6 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
       G4String volume_post = step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
       // if this gamma leaves the xenon volume..... just kill it to make sure it never comes back.
-      // check_ezra
       if (volume_post == "InnerCryostat") {
         step->GetTrack()->SetTrackStatus(fStopAndKill);
       }
@@ -408,7 +407,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
 
     // after checking if the particle is/has been inside the xenon volume, check if the track ID is 1, the process type is "compt",
     //if ((processType == "compt") && (!fEventAction->HasBeenInXenon())) {
-    // check_ezra
+
     if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LiquidXenon"))) {
       fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
     }
