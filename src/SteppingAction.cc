@@ -400,7 +400,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
       G4String volume_post = step->GetPostStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
       // if this gamma leaves the xenon volume..... just kill it to make sure it never comes back.
-      if (volume_post == "InnerCryostat") {
+      if ((volume_post != "LXeFiducial") && (volume_post != "LiquidXenon") && (volume_post != "GaseousXenon")) {
         step->GetTrack()->SetTrackStatus(fStopAndKill);
       }
     }
@@ -425,8 +425,8 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
         G4String postVolumeName = postVolume ? postVolume->GetName() : "OutOfWorld";
 
         // Check if gamma is exiting the liquid xenon volume
-        if ((preVolumeName == "LiquidXenon" || preVolumeName == "LXeFiducial") &&
-            (postVolumeName != "LiquidXenon" && postVolumeName != "LXeFiducial"))
+        if ((preVolumeName == "LiquidXenon" || preVolumeName == "LXeFiducial" || preVolumeName == "GaseousXenon") &&
+            (postVolumeName != "LiquidXenon" && postVolumeName != "LXeFiducial" && postVolumeName != "GaseousXenon" ))
         {
             
             // Gamma has exited the liquid xenon
