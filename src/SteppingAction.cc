@@ -393,7 +393,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     G4String volume_name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
     // check if particle is inside the xenon volume
-    if ((volume_name == "LXeFiducial") || (volume_name == "LiquidXenon")) {
+    if ((volume_name == "LXeFiducial") || (volume_name == "LiquidXenon") || (volume_name == "GaseousXenon")) {
       // the particle saw liquid xenon
       fEventAction->SetHasBeenInXenon(true);
 
@@ -401,7 +401,10 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
 
       // if this gamma leaves the xenon volume..... just kill it to make sure it never comes back.
       if ((volume_post != "LXeFiducial") && (volume_post != "LiquidXenon") && (volume_post != "GaseousXenon")) {
+        // if not in xenon volume, kill the track and the gamma escaped detection
+        fEventAction->AddEventType(ESCAPED_GAMMA);
         step->GetTrack()->SetTrackStatus(fStopAndKill);
+
       }
     }
 

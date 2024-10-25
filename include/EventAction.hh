@@ -59,12 +59,16 @@ namespace G4Sim
 // Use enum to define the constants
 enum EventType {
     // Primary Classification (bits 0-1)
-    DIRECT_GAMMA = 1 << 0,
-    SCATTERED_GAMMA = 1 << 1,
+    DIRECT_GAMMA = 1 << 0,         // Bit 0: 0001 -> Decimal 1
+    SCATTERED_GAMMA = 1 << 1,      // Bit 1: 0010 -> Decimal 2
 
     // Bremsstrahlung Classification (bits 2-3)
-    BREM_GAMMA = 1 << 2,
-    BREM_GAMMA_ESCAPED = 1 << 3
+    BREM_GAMMA = 1 << 2,           // Bit 2: 0100 -> Decimal 4
+    BREM_GAMMA_ESCAPED = 1 << 3,   // Bit 3: 1000 -> Decimal 8
+
+    // New Escaped Gamma Classification (bit 4)
+    ESCAPED_GAMMA = 1 << 4,         // Bit 4: 0001 0000 -> Decimal 16
+
 };
 
 /**
