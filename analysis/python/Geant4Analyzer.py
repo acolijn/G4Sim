@@ -290,5 +290,72 @@ class Geant4Analyzer:
                     ax.plot([0, 400], [z_source, z_source], '--', color='blue', linewidth=0.5)
                     ax.plot(r_source, z_source, 'bx', markersize=3)
 
+    def analyze_event_classifications(self, ax=None, show=True):
+        """
+        Analyzes and prints the combinations of classifications in the current cut.
+        It processes each event and categorizes it based on the event type bits set.
+
+        Args:
+            ax (matplotlib.axes.Axes, optional): The axis to plot on. If None, a new figure is created.
+            show (bool, optional): Whether to display the plot.
+
+        Returns:
+            matplotlib.axes.Axes: The axis object.
+        """
+        event_types = self.data['type']
+        total_events = len(event_types)
+        print(f"Total number of events: {total_events}")
+
+        # Initialize counts for all possible combinations of event types
+        classification_counts = {}
+
+        # Process each event type combination
+        for event_type in event_types:
+            event_type_int = int(event_type)
+            
+            # Create a unique string representation of the combination of bits set
+            classification = []
+            if event_type_int & 1:
+                classification.append('Direct')
+            elif event_type_int & 2:
+                classification.append('Scattered')
+            if event_type_int & 4:
+                classification.append('Brem')
+            if event_type_int & 8:
+                classification.append('Brem_esc')
+            if event_type_int & 16:
+                classification.append('Esc')
+            
+            classification_str = ' + '.join(classification) if classification else 'NONE'
+            
+            # Increment the count for this classification combination
+            if classification_str not in classification_counts:
+                classification_counts[classification_str] = 0
+            classification_counts[classification_str] += 1
+
+        # Now, plot the counts
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 8))
+
+        classifications = list(classification_counts.keys())
+        counts = [classification_counts[cls] for cls in classifications]
+
+        bars = ax.bar(classifications, counts, color='skyblue')
+
+        # Add count labels above each bar
+        for bar, count in zip(bars, counts):
+            yval = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, int(count), ha='center', va='bottom')
+
+        ax.set_xlabel('Event Classification Combinations')
+        ax.set_ylabel('Number of Events')
+        ax.set_title('Number of Events per Classification Combination')
+        ax.tick_params(axis='x', rotation=90)
+        plt.tight_layout()
+
+        if show:
+            plt.show()
+
+        return ax
 
     
