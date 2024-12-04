@@ -15,7 +15,7 @@ def is_jagged(array):
 
 
 class Geant4Analyzer:
-    def __init__(self, run_id, label="", first_only=True):
+    def __init__(self, run_id, label="", first_only=False, start_index=None, file_count=None):
         """
         Initializes the analyzer with the given file path.
 
@@ -26,7 +26,7 @@ class Geant4Analyzer:
 
         manager = RunManager("../../run/rundb.json")
 
-        self.file_paths = manager.get_output_root_files(run_id, first_only=first_only)
+        self.file_paths = manager.get_output_root_files(run_id, first_only=first_only, start_index=start_index, file_count=file_count)
         self.settings = manager.get_run_settings(run_id, convert_units=True)
         self.geometry = manager.get_geometry(run_id)   
         self.label = ""
