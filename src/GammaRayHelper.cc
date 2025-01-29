@@ -8,6 +8,7 @@
 #include "G4MaterialCutsCouple.hh"
 #include "G4LivermoreComptonModel.hh"
 #include "G4LivermoreRayleighModel.hh"
+#include "G4LivermoreGammaConversionModel.hh"
 #include <thread>
 #include <vector>
 
@@ -37,6 +38,7 @@ void GammaRayHelper::Initialize() {
     comptonModel = new ExtendedLivermoreComptonModel();
     photoelectricModel = new G4LivermorePhotoElectricModel();
     rayleighModel = new G4LivermoreRayleighModel();
+    pairProductionModel = new G4LivermoreGammaConversionModel();
 
     G4DataVector cuts;
     cuts.push_back(0 * keV); // Example cut value, adjust as needed?? what it means? find out.....
@@ -44,6 +46,7 @@ void GammaRayHelper::Initialize() {
     comptonModel->Initialise(G4Gamma::Gamma(), cuts);
     photoelectricModel->Initialise(G4Gamma::Gamma(), cuts);
     rayleighModel->Initialise(G4Gamma::Gamma(), cuts);
+    pairProductionModel->Initialise(G4Gamma::Gamma(), cuts);
 } 
 
 /**
@@ -151,14 +154,32 @@ G4double GammaRayHelper::GetPhotoelectricCrossSection(G4double energy, G4Materia
 }
 
 /**
+ * Get the pair production cross section for a given energy and material.
+ * @param energy The energy of the gamma ray.
+ * @param material The material to calculate the cross section for.
+ * @return The pair production cross section.
+ */
+G4double GammaRayHelper::GetPairProductionCrossSection(G4double energy, G4Material* material) {
+    G4double crossSection = 0.0;
+    const G4ElementVector* elementVector = material->GetElementVector();
+    const G4double* fractionVector = material->GetFractionVector();
+
+    for (size_t i = 0; i < material->GetNumberOfElements(); ++i) {
+        const G4Element* element = (*elementVector)[i];
+        crossSection += fractionVector[i] * pairProductionModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
+    }
+    return crossSection;
+}
+/**
  * Get the total cross section (Compton + photoelectric) for a given energy and material.
  * @param energy The energy of the gamma ray.
  * @param material The material to calculate the cross section for.
  * @return The total cross section.
  */
 G4double GammaRayHelper::GetTotalCrossSection(G4double energy, G4Material* material) {
-    //G4AutoLock lock(&mutex); // Ensure thread-safe access
-    G4double crossSection = GetComptonCrossSection(energy, material) + GetPhotoelectricCrossSection(energy, material);
+    G4double crossSection = GetComptonCrossSection(energy, material)
+                            + GetPhotoelectricCrossSection(energy, material)
+                            + GetPairProductionCrossSection(energy, material); // Add pair production
     return crossSection;
 }
 
@@ -179,7 +200,8 @@ G4double GammaRayHelper::GetAttenuationLength(G4double energy, G4Material* mater
         //                comptonModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ()) +
         //                rayleighModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
         G4double xsec = photoelectricModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ()) + 
-                        comptonModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
+                        comptonModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ()) +
+                        pairProductionModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
         G4double A = element->GetA();
         //G4cout << i << " Element: " << element->GetName() << " xsec: " << xsec << " A: " << A << G4endl;
         //G4cout << i << "             phot  = " << comptonModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ())  << G4endl;
@@ -225,6 +247,7 @@ G4double GammaRayHelper::GetMassAttenuationCoefficient(G4double energy, G4Materi
 
         G4double sigma = photoelectricModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
         sigma += comptonModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
+        sigma += pairProductionModel->ComputeCrossSectionPerAtom(G4Gamma::Gamma(), energy, element->GetZ());
         // not 100% sure about this conversion...... maybe I should check teh units of teh cross section routines.....
         att += fractionVector[i] * (sigma / A ) * cm2;
     }

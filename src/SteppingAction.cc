@@ -44,6 +44,7 @@
 #include "G4AnalysisManager.hh"
 #include "G4SDManager.hh"
 #include "GammaRayHelper.hh"
+#include "G4Gamma.hh"
 
 #include <vector>
 #include <mutex>
@@ -198,19 +199,28 @@ G4double SteppingAction::DoScatter(const G4Step* step, G4ThreeVector x0){
   G4LogicalVolume* volume_pre = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume();
   G4Material* material        = volume_pre->GetMaterial();
 
-  G4double photoelectricCrossSection = fGammaRayHelper->GetPhotoelectricCrossSection(energy, material);
-  G4double comptonCrossSection       = fGammaRayHelper->GetComptonCrossSection(energy, material);
-  G4double ratio = comptonCrossSection / (photoelectricCrossSection + comptonCrossSection);
+  G4double photoelectricCrossSection  = fGammaRayHelper->GetPhotoelectricCrossSection(energy, material);
+  G4double comptonCrossSection        = fGammaRayHelper->GetComptonCrossSection(energy, material);
+  G4double pairproductionCrossSection = fGammaRayHelper->GetPairProductionCrossSection(energy, material);
   
+  G4double totalCrossSection = photoelectricCrossSection + comptonCrossSection + pairproductionCrossSection;
+  G4double totalRelevantCrossSection = photoelectricCrossSection + comptonCrossSection;
+  // Effective probabilities excluding pair production
+  G4double effectivePEProbability = photoelectricCrossSection / totalRelevantCrossSection;
+  G4double effectiveComptonProbability = comptonCrossSection / totalRelevantCrossSection;
+
   G4double maxEnergy = fEventAction->GetAvailableEnergy();
   G4double rand = G4UniformRand();
 
   G4Track* track = step->GetTrack();
   G4String process = "";
-  if ( (rand > ratio) && (energy < maxEnergy) ){
+
+  
+  if (  (rand < effectivePEProbability) && (energy < maxEnergy) ){
     process = "phot";
     // generate a PE scatter: we make an energy deposit with the full energyand kill the track
     energyDeposit = energy;
+    weight *= totalRelevantCrossSection / totalCrossSection;
   } else {
     process = "compt";
     // take into account that we ignored the PE effect and assign a weight
@@ -218,10 +228,11 @@ G4double SteppingAction::DoScatter(const G4Step* step, G4ThreeVector x0){
     InteractionData compton = fGammaRayHelper->DoComptonScatter(step, x0, maxEnergy);
     energyDeposit = compton.energyDeposited;
     analysisManager->FillH1(0, compton.cosTheta);
-
+    weight *= totalRelevantCrossSection / totalCrossSection;
     // take into account the Compton scatter weight, only if the maximum allowed energy deposit is somewhere in the Compton region
+    
     if(energy > maxEnergy) {
-      weight *= ratio; // take into account ignored PE effect
+        
       weight *= compton.weight; // take into account the Compton scatter weight, only if the maximum allowed energy deposit is somewhere in the Compton region
     } 
     //
@@ -389,6 +400,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
 
   // check the primary gamma ray....
   if (trackID == 1){
+    
     G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
     G4String volume_name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
 
@@ -417,7 +429,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     //if ((processType == "compt") || processType == "phot") && (fEventAction->HasBeenInXenon()) {
     //  fEventAction->SetEventType(DIRECT_GAMMA);
     //}
-
+    
     if (fEventAction->IsBremsGammaToTrack(trackID))
     {
         // Get pre-step and post-step volumes
