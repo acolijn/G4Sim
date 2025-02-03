@@ -301,35 +301,58 @@ class Geant4Analyzer:
                     ax.plot([0, 400], [z_source, z_source], '--', color='blue', linewidth=0.5)
                     ax.plot(r_source, z_source, 'bx', markersize=3)
 
-    def analyze_event_classifications(self, ax=None, show=True):
+    def analyze_event_classifications(self, cut=None, cut_hit=None, ax=None, show=True):
         """
         Analyzes and prints the combinations of classifications in the current cut.
         It processes each event and categorizes it based on the event type bits set.
 
         Args:
+            cut (callable, optional): Primary cut for filtering events.
+            cut_hit (callable, optional): Additional cut for filtering events based on hit-level cuts.
             ax (matplotlib.axes.Axes, optional): The axis to plot on. If None, a new figure is created.
             show (bool, optional): Whether to display the plot.
 
         Returns:
             matplotlib.axes.Axes: The axis object.
         """
-        event_types = self.data['type']
-        total_events = len(event_types)
+
+        if self.raw is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        # Apply both primary cut and hit-level cut if provided
+        if cut is not None:
+            primary_cut_mask = cut(self.raw)
+        else:
+            primary_cut_mask = ak.ones_like(self.raw['type'], dtype=bool)
+
+        if cut_hit is not None:
+            hit_cut_mask = cut_hit(self.raw)
+            combined_cut_mask = primary_cut_mask & ak.any(hit_cut_mask, axis=1)
+        else:
+            combined_cut_mask = primary_cut_mask
+
+        # Filter event types using the combined mask
+        filtered_event_types = self.raw['type'][combined_cut_mask]
+
+        #TEMP 
+        filtered_event_ID = self.raw['ev'][combined_cut_mask]
+        
+        total_events = len(filtered_event_types)
         print(f"Total number of events: {total_events}")
 
         # Initialize counts for all possible combinations of event types
         classification_counts = {}
 
         # Process each event type combination
-        for event_type in event_types:
+        for event_type in filtered_event_types:
             event_type_int = int(event_type)
             
             # Create a unique string representation of the combination of bits set
             classification = []
             if event_type_int & 1:
-                classification.append('Direct')
+                classification.append('Dir')
             elif event_type_int & 2:
-                classification.append('Scattered')
+                classification.append('Scat')
             if event_type_int & 4:
                 classification.append('Brem')
             if event_type_int & 8:
@@ -362,6 +385,7 @@ class Geant4Analyzer:
         ax.set_ylabel('Number of Events')
         ax.set_title('Number of Events per Classification Combination')
         ax.tick_params(axis='x', rotation=90)
+        ax.set_ylim(0, max(counts) * 1.1)
         plt.tight_layout()
 
         if show:
