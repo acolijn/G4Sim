@@ -14,9 +14,6 @@ CustomEmPhysics::CustomEmPhysics(PhysicsMessenger* messenger)
 
 CustomEmPhysics::~CustomEmPhysics() {}
 
-#add docstring
-
-
 /**
  * Constructs the physics processes for the custom electromagnetic physics list.
     * This method is called by the base class method to construct the standard processes.
