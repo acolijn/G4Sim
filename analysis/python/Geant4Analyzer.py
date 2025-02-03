@@ -150,17 +150,18 @@ class Geant4Analyzer:
             self.data[field] = ak.to_numpy(data_field)
 
 
-    def plot_histogram(self, variable, ax=None, bins=50, range=None, show=True):
+    def plot_histogram(self, variable, ax=None, bins=50, range=None, label=None, show=True, errorbar=False):
         """
-        Plots a histogram of the given variable.
+        Plots a histogram of the given variable or points with error bars.
 
         Args:
-
             variable (str): The variable to plot.
             ax (matplotlib.axes.Axes, optional): The axis to plot on. If None, a new figure is created.
             bins (int or array-like, optional): The number of bins or bin edges.
             range (tuple, optional): The range of the histogram.
+            label (str, optional): Label for the plot.
             show (bool, optional): Whether to display the plot.
+            errorbar (bool, optional): Whether to plot points with error bars instead of a histogram.
 
         Returns:
             matplotlib.axes.Axes: The axis object.
@@ -177,11 +178,21 @@ class Geant4Analyzer:
         # use the event weights for the event variables, otherwise use the hit weights
         weights = self.data['w'] if len(self.data['w']) == len(self.data[variable]) else self.data['wh']
 
-        hist, _ = np.histogram(self.data[variable], weights=np.exp(weights), bins=bins, range=range)
-        print("integral =",np.sum(hist))
+        # Calculate histogram and bin properties
+        hist, bin_edges = np.histogram(self.data[variable], weights=np.exp(weights), bins=bins, range=range)
+        bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])  # Calculate bin centers
+        errors = np.sqrt(hist)  # Poisson error for each bin
 
-        ax.hist(self.data[variable], weights=np.exp(weights), bins=bins, range=range, histtype='step', label=self.label)
+        print(f"integral {label}=", np.sum(hist))
 
+        if errorbar:
+            # Plot points with error bars using caret markers and reduced marker size
+            ax.errorbar(bin_centers, hist, yerr=errors, fmt='^', markersize=3, label=label)
+        else:
+            # Plot histogram
+            ax.hist(self.data[variable], weights=np.exp(weights), bins=bins, range=range, histtype='step', label=label)
+
+        # Set labels based on variable
         if variable == 'r':
             ax.set_xlabel('radius (mm)')
         elif (variable == 'xp') or (variable == 'xh'):
