@@ -17,6 +17,7 @@
 #include "GammaRayHelper.hh"
 #include "CustomEmPhysics.hh"
 #include "PhysicsListManager.hh"
+#include "PhysicsMessenger.hh"
 
 using namespace G4Sim;
 
@@ -35,7 +36,7 @@ using namespace G4Sim;
 int main(int argc,char** argv)
 {
   // Detect interactive mode (if no arguments) and define UI session
-  //
+
   G4UIExecutive* ui = nullptr;
   if ( argc == 1 ) { ui = new G4UIExecutive(argc, argv); }
 
@@ -51,19 +52,35 @@ int main(int argc,char** argv)
   auto* runManager =
     G4RunManagerFactory::CreateRunManager(G4RunManagerType::Serial);
 
+
+  // create a new messenger for the custom physics 
+ 
+  auto* physicsMessenger = new PhysicsMessenger();
   //runManager->SetNumberOfThreads(1);
 
   // Set mandatory initialization classes
   //
   // Detector construction
 
+
+
+
+  // WITH BREM ###################################################
   GammaRayHelper* helper = &GammaRayHelper::Instance();
   
   runManager->SetUserInitialization(new DetectorConstruction());
+  
+  
 
+
+  
   // Initialize physics using the new PhysicsListManager
   PhysicsListManager physicsManager;
-  runManager->SetUserInitialization(physicsManager.CreatePhysicsList());
+  auto* defaultList = physicsManager.CreatePhysicsList();
+  runManager->SetUserInitialization(defaultList);
+  runManager->SetUserInitialization(new ActionInitialization(helper));
+
+
 
   //G4PhysListFactory factory;
   //G4VModularPhysicsList* physicsList = factory.GetReferencePhysList("FTFP_BERT_HP");
@@ -71,10 +88,11 @@ int main(int argc,char** argv)
   ////if you want to mess with the Em physics list ...... physicsList->ReplacePhysics(new CustomEmPhysics());
   //runManager->SetUserInitialization(physicsList);
   // User action initialization
-  runManager->SetUserInitialization(new ActionInitialization(helper));
+
+  // WITH BREM ###################################################
 
   // Initialize visualization
-  //
+
   G4VisManager* visManager = new G4VisExecutive;
   // G4VisExecutive can take a verbosity argument - see /vis/verbose guidance.
   // G4VisManager* visManager = new G4VisExecutive("Quiet");
@@ -85,19 +103,45 @@ int main(int argc,char** argv)
 
   // Process macro or start UI session
   //
-  if ( ! ui ) {
-    // batch mode
-    G4String command = "/control/execute ";
-    G4String fileName = argv[1];
-    UImanager->ApplyCommand(command+fileName);
+
+  if (!ui) {
+    if (argc >= 3) {
+      // 1) parse "preinit.mac"
+      G4String preinitFile = argv[1];
+      UImanager->ApplyCommand("/control/execute " + preinitFile);
+
+      // 2) Now read physics toggles
+      bool brem = physicsMessenger->IsBremEnabled();
+      bool pair = physicsMessenger->IsPairEnabled();
+      bool rayl = physicsMessenger->IsRayleighEnabled();
+
+      bool needCustom = (!brem || !pair || !rayl);
+      if (needCustom) {
+          G4cout << "Switching to CustomEmPhysics" << G4endl;
+          auto* customEm = new CustomEmPhysics(physicsMessenger);
+          defaultList->ReplacePhysics(customEm);
+      }
+      
+      // 3) parse "main.mac"
+      G4String mainFile = argv[2];
+      UImanager->ApplyCommand("/control/execute " + mainFile);
+      }
+      else if (argc == 2) {
+        // single macro
+        G4String macroFile = argv[1];
+        UImanager->ApplyCommand("/control/execute " + macroFile);
+      }
   }
   else {
-    // interactive mode
-    UImanager->ApplyCommand("/control/execute vis.mac");
-    ui->SessionStart(); 
-    delete ui; 
+      // interactive
+      UImanager->ApplyCommand("/control/execute vis.mac");
+      ui->SessionStart();
+      delete ui;
   }
  
+
+  
+
   // Job termination
   // Free the store: user actions, physics_list and detector_description are
   // owned and deleted by the run manager, so they should not be deleted

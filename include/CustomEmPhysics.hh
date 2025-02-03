@@ -1,15 +1,23 @@
-#ifndef CustomEmPhysics_hh
-#define CustomEmPhysics_hh 1
+#ifndef CUSTOMEMPHYSICS_HH
+#define CUSTOMEMPHYSICS_HH
 
-#include "G4VPhysicsConstructor.hh"
 #include "G4EmLivermorePhysics.hh"
+#include "G4ParticleDefinition.hh"
+#include "PhysicsMessenger.hh"
 
 class CustomEmPhysics : public G4EmLivermorePhysics {
 public:
-    CustomEmPhysics();
+    CustomEmPhysics(PhysicsMessenger* messenger);
     virtual ~CustomEmPhysics();
 
-    virtual void ConstructProcess();
+    void ConstructProcess() override;
+
+private:
+    PhysicsMessenger* fMessenger;
+
+    void RemoveRayleighScattering();
+    void RemoveBremsstrahlung(G4ParticleDefinition* particle);
+    void RemovePairProduction();
 };
 
 #endif

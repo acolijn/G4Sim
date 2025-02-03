@@ -130,6 +130,27 @@ def generate_run_settings(run_settings, path_manager, job_id):
     
     return "\n".join(commands)
 
+def generate_physics_settings(physics_settings):
+    """
+    Generate the physics-related commands based on the provided run_settings.
+    """
+    # If physics_settings is not provided or is None, make it an empty dict
+    if physics_settings is None:
+        physics_settings = {}
+
+    # Grab booleans, defaulting to True if not present
+    brem_enabled     = physics_settings.get("brem_enabled", True)
+    pair_enabled     = physics_settings.get("pair_enabled", True)
+    rayleigh_enabled = physics_settings.get("rayleigh_enabled", True)
+
+    commands = []
+    commands.append(f"/physics/setBremEnabled {str(brem_enabled).lower()}")    # yields "true" or "false"
+    commands.append(f"/physics/setPairEnabled {str(pair_enabled).lower()}")
+    commands.append(f"/physics/setRayleighEnabled {str(rayleigh_enabled).lower()}")
+
+    return "\n".join(commands)
+
+
 def generate_run_control(beam_on, random_seed1, random_seed2):
     """
     Generate the run section commands for the macro file.
@@ -187,6 +208,32 @@ def generate_mac_file(settings, path_manager, beam_on, random_seed1, job_id):
         file.write(mac_content)
     
     return mac_file
+
+def generate_preinit_mac_file(settings, path_manager, job_id):
+    """
+    Generate a preinit macro that only sets physics toggles (if present).
+    Does NOT call /run/initialize or /run/beamOn.
+    """
+    # Extract toggles from normalSimulation_physics_settings
+    physics_section = ""
+    if "normalSimulation_physics_settings" in settings:
+        physics_section = generate_physics_settings(settings["normalSimulation_physics_settings"])
+
+    # This macro just has the toggles, no /run/initialize or geometry or beam
+    mac_content = "\n".join([
+        "/control/verbose 0",
+        "/run/verbose 0",
+        "/tracking/verbose 0",
+        "# Physics toggles",
+        physics_section,
+        # no /run/initialize, no geometry
+    ])
+
+    preinit_file = os.path.join(path_manager.jobs_dir, f"preinit_macro_{job_id}.mac")
+    with open(preinit_file, 'w') as f:
+        f.write(mac_content)
+
+    return preinit_file
 
 def submit_job(mac_file, path_manager, job_name="G4Job"):
     """
@@ -247,6 +294,16 @@ def run_simulation(mac_file, path_manager):
     executable = os.path.join(path_manager.project_base_dir, "build", "G4Sim")
     print(executable, mac_file)
     subprocess.run([executable, mac_file])
+
+def run_simulation_custom_physics_macros(preinit_file, main_file, path_manager):
+    """
+    If we have a preinit and a main macro, pass both to G4Sim:
+    ./G4Sim preinit_file main_file
+    """
+    executable = os.path.join(path_manager.project_base_dir, "build", "G4Sim")
+    cmd = [executable, preinit_file, main_file]
+    print("Running with two macros:", " ".join(cmd))
+    subprocess.run(cmd)
 
 def parse_arguments():
     """
@@ -319,12 +376,31 @@ def execute_jobs(args, settings, path_manager):
     Returns:
         None
     """
+    custom_physics = "normalSimulation_physics_settings" in settings
+
     for job_id in range(args.num_jobs):
+        preinit_file = None
+        if custom_physics:
+            preinit_file = generate_preinit_mac_file(settings, path_manager, job_id)
+
         mac_file = generate_mac_file(settings, path_manager, args.beam_on // args.num_jobs, settings["randomSeed"] + job_id * 10, job_id)
         if args.batch:
-            submit_job(mac_file, path_manager, f"job_{job_id}")
+        # If we want to pass both macros to the script, we need to adjust 
+        # the submit logic to handle multiple macros, or combine them, etc.
+        # For simplicity, let's handle only 2 macros
+            if preinit_file:
+            # We'll pass "preinit.mac main.mac" as arguments somehow 
+            # or you can submit them in sequence
+                pass
+            else:
+                submit_job(mac_file, path_manager, f"job_{job_id}")
         else:
-            run_simulation(mac_file, path_manager)
+            # local run
+            if preinit_file:
+                # We run: ./G4Sim preinit.mac main.mac
+                run_simulation_custom_physics_macros(preinit_file, mac_file, path_manager)
+            else:
+                run_simulation(mac_file, path_manager)
 
 def update_master_rundb(rundb, settings, path_manager, args):
     """
