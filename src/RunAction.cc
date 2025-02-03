@@ -302,7 +302,7 @@ void RunAction::DefineCrossSectionNtuple(){
   int numSteps = 1000;
   double factor = std::pow(endEnergy / startEnergy, 1.0 / (numSteps - 1));
 
-  std::vector<G4String> processNames = {"compton", "phot", "tot", "att"};
+  std::vector<G4String> processNames = {"compton", "phot", "tot", "att", "pair"};
 
   for (auto* mat : *materialTable) {
     for (auto processName : processNames) {
@@ -315,6 +315,8 @@ void RunAction::DefineCrossSectionNtuple(){
           crossSection = fGammaRayHelper->GetPhotoelectricCrossSection(energy, mat);
         } else if (processName == "tot") {
           crossSection = fGammaRayHelper->GetTotalCrossSection(energy, mat);
+        } else if (processName == "pair") {
+        crossSection = fGammaRayHelper->GetPairProductionCrossSection(energy, mat);
         }
         analysisManager->FillNtupleSColumn(crossSectionNtupleId, 0, mat->GetName());
         analysisManager->FillNtupleSColumn(crossSectionNtupleId, 1, processName);

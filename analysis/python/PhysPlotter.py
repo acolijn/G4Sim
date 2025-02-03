@@ -80,7 +80,7 @@ class PhysPlotter:
         """
         if ax is None:
             fig, ax = plt.subplots()
-            fig.set_size_inches(5, 5)
+            fig.set_size_inches(5, 6)
 
         if material is None:
             # exit with error: 'mat' is not defined
@@ -92,13 +92,16 @@ class PhysPlotter:
         ax.plot(d['e'][cut], d['att'][cut], linestyle='--', color="blue", label="Compton")	
         cut = (d['proc'] == "phot")
         ax.plot(d['e'][cut], d['att'][cut], linestyle='-.', color="red", label="Photoelectric")
+        cut = (d['proc'] == "pair")
+        ax.plot(d['e'][cut], d['att'][cut], linestyle='-.', color="green", label="Pair production")
         cut = (d['proc'] == "tot")
         ax.plot(d['e'][cut], d['att'][cut], color="black", label="Total")
 
-        ax.legend(frameon=False)
 
-        ax.set_xlabel("Energy (MeV)")
-        ax.set_ylabel("$\\sigma$ (barn)")
+        ax.legend(frameon=False)
+        
+        ax.set_xlabel("Photon Energy (MeV)")
+        ax.set_ylabel("$\\sigma$ (barn/atom)")
         ax.set_xscale("log")
         ax.set_yscale("log")
 
