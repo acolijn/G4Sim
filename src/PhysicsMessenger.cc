@@ -5,6 +5,15 @@
 #include "G4SystemOfUnits.hh"
 #include "G4ios.hh"
 
+/**
+ * @class PhysicsMessenger
+ * @brief A messenger class to handle user commands for toggling physics processes.
+ *
+ * The PhysicsMessenger class listens for commands that allow users to enable or disable
+ * specific physics processes in a Geant4 simulation. It provides commands for
+ * bremsstrahlung, pair production, and Rayleigh scattering.
+ */
+
 PhysicsMessenger::PhysicsMessenger()
  : G4UImessenger(),
    fBremCmd(nullptr),
@@ -31,6 +40,12 @@ PhysicsMessenger::PhysicsMessenger()
     fRayCmd->SetParameterName("RayleighEnabled", false);
 }
 
+
+/**
+ * @brief Destructor for the PhysicsMessenger class.
+ *
+ * Cleans up the dynamically allocated commands.
+ */
 PhysicsMessenger::~PhysicsMessenger()
 {
     delete fBremCmd;
