@@ -393,4 +393,26 @@ class Geant4Analyzer:
 
         return ax
 
-    
+    def print_event_data(self, event_id):
+        """
+        Print data for a specific event ID from raw data.
+        
+        Args:
+            event_id (float): The event ID to look up.
+        """
+        if self.raw is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        # Locate the specific event by event ID
+        event_data = self.raw[self.raw["ev"] == event_id]
+
+        if len(event_data) == 0:
+            print(f"Event {event_id} not found.")
+            return
+
+        # Print all fields for the specified event
+        print(f"Data for Event ID {event_id}:")
+        for field in event_data.fields:
+            print(f"{field}: {event_data[field]}")
+
+
