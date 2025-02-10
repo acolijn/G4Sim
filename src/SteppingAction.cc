@@ -29,6 +29,7 @@
 
 #include "SteppingAction.hh"
 #include "EventAction.hh"
+#include "RunAction.hh"
 #include "DetectorConstruction.hh"
 
 #include "G4Step.hh"
@@ -49,7 +50,7 @@
 #include <vector>
 #include <mutex>
 #include <utility>
-
+#include <map>
 namespace {
     G4Mutex mutex = G4MUTEX_INITIALIZER;
 }
@@ -397,6 +398,18 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
   G4int trackID = track->GetTrackID();
   
   if(verbosityLevel >= 2) Print(step);
+
+
+  G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
+  if (!processType.empty()) {
+        auto runAction = const_cast<RunAction*>(static_cast<const RunAction*>(
+            G4RunManager::GetRunManager()->GetUserRunAction()));
+        
+        if (runAction) {
+            runAction->RecordProcessToHistogram(processType);
+        }
+    }
+
 
   // check the primary gamma ray....
   if (trackID == 1){

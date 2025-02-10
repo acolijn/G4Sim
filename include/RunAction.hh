@@ -41,12 +41,15 @@ class RunAction : public G4UserRunAction
     void InitializeNtuples();
     void DefineEventNtuple();
     void DefineCrossSectionNtuple();
+    void DefineProcessMapNtuple();
     void DefineDifferentialCrossSectionNtuple(G4double energy) const;
 
     void SetFastSimulation(G4bool value) { fFastSimulation = value; }
     void SetNumberOfScatters(G4int value) { fNumberOfScattersMax = value; }
     void SetMaxEnergy(G4double value) { fMaxEnergy = value; }
     void SetOutputFileName(G4String value) { fOutputFileName = value; }
+
+    void RecordProcessToHistogram(const G4String& processType);
 
   private:
     EventAction* fEventAction = nullptr;
@@ -61,6 +64,10 @@ class RunAction : public G4UserRunAction
     G4int fNumberOfScattersMax = 0;
     G4double fMaxEnergy = 0.0;
     G4String fOutputFileName = "G4Sim.root";
+
+    std::map<G4String, G4int> processMap;
+    G4int processNtupleId;
+    G4int nextBinIndex;
 };
 
 }

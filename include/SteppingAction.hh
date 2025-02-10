@@ -1,6 +1,7 @@
 #ifndef _SteppingAction_h
 #define _SteppingAction_h 1
 
+#include "RunAction.hh"
 #include "G4UserSteppingAction.hh"
 #include "G4ParticleTable.hh"
 #include "globals.hh"
@@ -110,6 +111,10 @@ class SteppingAction : public G4UserSteppingAction
     /// Pointer to the GammaRayHelper object for gamma ray calculations.
     GammaRayHelper* fGammaRayHelper;
 
+    // Pointer to runaction for histogram mapping
+    RunAction* fRunAction;
+
+    
     /// Map of hit collections by name.
     std::map<G4String, HitsCollection*> fHitsCollections;
 

@@ -37,7 +37,10 @@ RunAction::RunAction(EventAction* eventAction, GammaRayHelper* helper)
 {
   // set printing event number per each event
   G4RunManager::GetRunManager()->SetPrintProgress(1000);
+  processMap = {
 
+    };
+  nextBinIndex = processMap.size() + 1;
   // Create the generic analysis manager
   auto analysisManager = G4AnalysisManager::Instance();
 
@@ -128,13 +131,45 @@ void RunAction::InitializeNtuples(){
     // Creating histograms
     analysisManager->CreateH1("cost", "cos theta of Compton", 2200, -1.1, +1.1); // id = 0
 
+
+    
+    analysisManager->CreateH1("proc", "Physical Processes",  100, 0, 100);  // id = 1, 20 bins for different processes
     // Creating event data ntuple
     DefineEventNtuple();
     // Creating and filling physics data ntuple
     DefineCrossSectionNtuple();
     // Creating and filling differential cross-section data ntuple
     // done from EventAction at the first event: since we the know the energy of the gamma rays. DefineDifferentialCrossSectionNtuple();
+    // make a map for the process ntuple.
+    DefineProcessMapNtuple();
   }
+}
+
+
+/**
+  * @brief Records the process type to the histogram.
+  * @param processType The process type to record.
+ */
+void RunAction::RecordProcessToHistogram(const G4String& processType) {
+    auto analysisManager = G4AnalysisManager::Instance();
+
+    auto it = processMap.find(processType);
+    if (it == processMap.end()) {
+        // Assign a new bin index
+        processMap[processType] = nextBinIndex;
+
+        G4cout << "New process detected: " << processType << " assigned to bin " << nextBinIndex << G4endl;
+        nextBinIndex++;  // Increment counter
+
+        // Log process name in the ntuple
+        analysisManager->FillNtupleSColumn(processNtupleId, 0, processType);
+        analysisManager->FillNtupleIColumn(processNtupleId, 1, processMap[processType]);
+        analysisManager->AddNtupleRow(processNtupleId);
+    }
+
+    // Get bin index and fill histogram
+    G4int processBin = processMap[processType];
+    analysisManager->FillH1(1, processBin);
 }
 
 /**
@@ -336,6 +371,15 @@ void RunAction::DefineCrossSectionNtuple(){
     //G4cout << mat->GetName() <<" linear attenuation at 1 MeV for 1 cm thickness: " << att << " " << G4endl;
   }
   //G4cout << "units.... cm="<< cm << " MeV=" << MeV << " g= "<<g<<G4endl; 
+}
+
+void RunAction::DefineProcessMapNtuple(){
+  auto analysisManager = G4AnalysisManager::Instance();
+  G4cout << "RunAction::BeginOfRunAction: Creating process data ntuple" << G4endl;
+  processNtupleId = analysisManager->CreateNtuple("proc_names", "Process Name Mapping");
+  analysisManager->CreateNtupleSColumn(processNtupleId, "Process Name"); // String column
+  analysisManager->CreateNtupleIColumn(processNtupleId, "Bin Index"); // Bin index
+  analysisManager->FinishNtuple(processNtupleId);
 }
 
 
