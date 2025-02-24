@@ -249,28 +249,29 @@ def submit_job(mac_file, path_manager, job_name="G4Job"):
     script_file = os.path.join(path_manager.jobs_dir, f"submit_{os.path.basename(mac_file).replace('.mac', '.sh')}")
 
     submit_content = f"""
-executable = {script_file}
-output = {log_file}
-error = {log_file}
-log = {log_file}
+        executable = {script_file}
+        output = {log_file}
+        error = {log_file}
+        log = {log_file}
 
-## Can use "el7", "el8", or "el9" for UseOS or you can specify your own
-## SingularityImage but an OS must be specified and in string quotations.
-+UseOS                  = "el9"
-## This job can run up to 4 hours. Can choose "express", "short", "medium", or "long".
-+JobCategory            = "short"
-queue
-    """
+        ## Can use "el7", "el8", or "el9" for UseOS or you can specify your own
+        ## SingularityImage but an OS must be specified and in string quotations.
+        +UseOS                  = "el9"
+        ## This job can run up to 4 hours. Can choose "express", "short", "medium", or "long".
+        +JobCategory            = "short"
+        queue
+            """
     with open(submit_file, 'w') as file:
         file.write(submit_content)
 
-    # Create job script
-    script_content = f"""#!/bin/bash
-source /user/z37/.bashrc
-conda activate g4
-cd {path_manager.jobs_dir}
-/user/z37/g4/G4Sim/build/G4Sim {mac_file}
-"""
+            # Create job script
+        script_content = f"""#!/bin/bash
+        source /user/edecleen/xenon/edecleen/master/.bashrc
+        conda activate g4
+        cd {path_manager.jobs_dir}
+        /user/edecleen/xenon/edecleen/master/G4Sim/build/G4Sim {mac_file}
+        """
+
     with open(script_file, 'w') as file:
         file.write(script_content)
 
@@ -278,6 +279,49 @@ cd {path_manager.jobs_dir}
     os.chmod(script_file, 0o755)
     
     # Submit the job
+    subprocess.run(["condor_submit", submit_file])
+
+def submit_job_custom_physics_macros(preinit_file, main_file, path_manager, job_name="G4Job"):
+    """
+    Submits a Geant4 job that uses two macros (preinit + main) to the batch queue.
+    This is similar to submit_job but calls G4Sim with both macros.
+    """
+    submit_file_basename = os.path.basename(main_file).replace(".mac", "")  # e.g., "run_macro_0"
+    submit_file = os.path.join(path_manager.jobs_dir, f"submit_{submit_file_basename}.submit")
+    log_file = os.path.join(path_manager.logs_dir, f"{job_name}.log")
+    script_file = os.path.join(path_manager.jobs_dir, f"submit_{submit_file_basename}.sh")
+
+    # Create the Condor submit file (for HTCondor)
+    submit_content = f"""
+        executable = {script_file}
+        output = {log_file}
+        error = {log_file}
+        log = {log_file}
+
+        +UseOS = "el9"
+        +JobCategory = "short"
+        queue
+            """.strip()
+
+    with open(submit_file, 'w') as sf:
+        sf.write(submit_content + "\n")
+
+    # Create the shell script that Condor will run.
+    # It calls G4Sim with two macro files.
+        script_content = f"""#!/bin/bash
+        source /user/edecleen/xenon/edecleen/master/.bashrc
+        conda activate g4
+        cd {path_manager.jobs_dir}
+        /user/edecleen/xenon/edecleen/master/G4Sim/build/G4Sim {preinit_file} {main_file}
+        """
+
+    with open(script_file, 'w') as sh:
+        sh.write(script_content)
+
+    # Make the script executable
+    os.chmod(script_file, 0o755)
+
+    # Finally, submit the job:
     subprocess.run(["condor_submit", submit_file])
 
 def run_simulation(mac_file, path_manager):
@@ -391,7 +435,7 @@ def execute_jobs(args, settings, path_manager):
             if preinit_file:
             # We'll pass "preinit.mac main.mac" as arguments somehow 
             # or you can submit them in sequence
-                pass
+                submit_job_custom_physics_macros(preinit_file, mac_file, path_manager, f"job_{job_id}")
             else:
                 submit_job(mac_file, path_manager, f"job_{job_id}")
         else:

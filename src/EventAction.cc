@@ -120,6 +120,9 @@ void EventAction::ResetVariables() {
   fNdet.clear();
   fNphot.clear();
   fNcomp.clear();
+    fNcap.clear();
+    fNelas.clear();
+    fNinelas.clear();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -211,8 +214,11 @@ void EventAction::RenormalizeHitTimes(G4HCofThisEvent* HCE) {
  * @param hits A vector of pointers to Hit objects to be analyzed.
  * @param ncomp An integer reference to store the count of Compton interactions.
  * @param nphot An integer reference to store the count of photoelectric interactions.
+    * @param ncap An integer reference to store the count of neutron capture interactions.
+    * @param nelas An integer reference to store the count of hadronic elastic interactions.
+    * @param ninelas An integer reference to store the count of hadronic inelastic interactions.
  */
-void EventAction::CountInteractions(std::vector<Hit*>& hits, int& ncomp, int& nphot) {
+void EventAction::CountInteractions(std::vector<Hit*>& hits, int& ncomp, int& nphot, int& ncap, int& nelas, int& ninelas) {
 
 
     for (const auto& hit : hits) {
@@ -326,12 +332,15 @@ void EventAction::AnalyzeHits(const G4Event* event) {
         // Count Compton and photoelectric interactions
         G4int ncomp = 0;
         G4int nphot = 0;
-        CountInteractions(hitList, ncomp, nphot);
+        G4int ncap = 0;
+        G4int nelas = 0;
+        G4int ninelas = 0;
+        CountInteractions(hitList, ncomp, nphot, ncap, nelas, ninelas);
         // Cluster hits and store the data
         std::vector<Cluster> clusters;
         ClusterHits(hitList, spatialThreshold, timeThreshold, clusters, static_cast<int>(collectionId));  
         // Store the data for each collection
-        StorePerCollectionData(clusters, ncomp, nphot);
+        StorePerCollectionData(clusters, ncomp, nphot, ncap, nelas, ninelas);
         // Increment the collection ID
         collectionId++;
     }
@@ -371,6 +380,9 @@ std::vector<G4String> EventAction::GetSensitiveDetectorNames() {
  * @param clusters The clusters for the given tag group.
  * @param ncomp The number of Compton interactions.
  * @param nphot The number of photoelectric interactions.
+    * @param ncap The number of neutron capture interactions.
+    * @param nelas The number of hadronic elastic interactions.
+    * @param ninelas The number of hadronic inelastic interactions.
  */
 void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot) {
     G4double edet = 0.0;
@@ -395,6 +407,9 @@ void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G
     fNdet.push_back(nclus);
     fNphot.push_back(nphot);
     fNcomp.push_back(ncomp);
+    fNcap.push_back(ncap);
+    fNelas.push_back(nelas);
+    fNinelas.push_back(ninelas);
 }
 
 /**

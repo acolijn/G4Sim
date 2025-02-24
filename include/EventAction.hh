@@ -100,6 +100,10 @@ class EventAction : public G4UserEventAction
     std::vector<G4int>& GetNdet(){return fNdet;};
     std::vector<G4int>& GetNphot(){return fNphot;};
     std::vector<G4int>& GetNcomp(){return fNcomp;};
+    std::vector<G4int>& GetNcap(){return fNcap;};
+    std::vector<G4int>& GetNelas(){return fNelas;};
+    std::vector<G4int>& GetNinelas(){return fNinelas;};
+
 
     void AddWeight(G4double weight) { fLogWeight += weight; }
     void AnalyzeHits(const G4Event* event);
@@ -135,8 +139,12 @@ class EventAction : public G4UserEventAction
     static void SetClusteringParameters(const std::map<G4String, std::pair<G4double, G4double>>& params);
     void AddHitsCollectionName(const G4String& name);
     void RenormalizeHitTimes(G4HCofThisEvent* HCE);
-    void CountInteractions(std::vector<Hit*>& hits, G4int& ncomp, G4int& nphot);
-    void StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot);
+    void CountInteractions(std::vector<Hit*>& hits, G4int& ncomp, G4int& nphot, G4int& ncap, G4int& nelas, G4int& ninelas);
+    void StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot, G4int ncap, G4int nelas, G4int ninelas);
+
+
+
+
     void MergeClusters(std::vector<Cluster>& clusters, G4double spatialThreshold, G4double timeThreshold);
     void SetVerbosityLevel(G4int level) { verbosityLevel = level; }
     std::vector<G4String> GetSensitiveDetectorNames();
@@ -174,6 +182,9 @@ class EventAction : public G4UserEventAction
     std::vector<G4int> fNdet;
     std::vector<G4int> fNphot;
     std::vector<G4int> fNcomp;
+    std::vector<G4int> fNcap;
+    std::vector<G4int> fNelas;
+    std::vector<G4int> fNinelas;
 
     std::set<G4int> fBremsGammasToTrack;   
     std::set<G4int> fBremsGammasThatEscaped; 
