@@ -114,8 +114,13 @@ int main(int argc,char** argv)
       bool brem = physicsMessenger->IsBremEnabled();
       bool pair = physicsMessenger->IsPairEnabled();
       bool rayl = physicsMessenger->IsRayleighEnabled();
+      bool elas = physicsMessenger->IsNeutronElasticEnabled();
+      bool inelas = physicsMessenger->IsNeutronInelasticEnabled();
+      bool ncap = physicsMessenger->IsNeutronCaptureEnabled();
+      
+      G4cout << "Physics toggles: brem=" << brem << " pair=" << pair << " rayl=" << rayl << " elas=" << elas << " inelas=" << inelas << " ncap=" << ncap << G4endl;
 
-      bool needCustom = (!brem || !pair || !rayl);
+      bool needCustom = (!brem || !pair || !rayl || !elas || !inelas || !ncap);
       if (needCustom) {
           G4cout << "Switching to CustomEmPhysics" << G4endl;
           auto* customEm = new CustomEmPhysics(physicsMessenger);

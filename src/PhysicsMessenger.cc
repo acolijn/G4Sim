@@ -19,9 +19,15 @@ PhysicsMessenger::PhysicsMessenger()
    fBremCmd(nullptr),
    fPairCmd(nullptr),
    fRayCmd(nullptr),
+    fNeutronElasticCmd(nullptr),
+    fNeutronInelasticCmd(nullptr),
+    fNeutronCaptureCmd(nullptr),
    fBremEnabled(true),
    fPairEnabled(true),
-   fRayleighEnabled(true)
+    fRayleighEnabled(true),
+    fNeutronElasticEnabled(true),
+    fNeutronInelasticEnabled(true),
+    fNeutronCaptureEnabled(true)
 {
     // You can optionally define a directory, e.g. /physics/
     // G4UIdirectory* physDir = new G4UIdirectory("/physics/");
@@ -38,6 +44,18 @@ PhysicsMessenger::PhysicsMessenger()
     fRayCmd = new G4UIcmdWithABool("/physics/setRayleighEnabled", this);
     fRayCmd->SetGuidance("Enable or disable Rayleigh scattering for gammas.");
     fRayCmd->SetParameterName("RayleighEnabled", false);
+
+    fNeutronElasticCmd = new G4UIcmdWithABool("/physics/setNeutronElasticEnabled", this);
+    fNeutronElasticCmd->SetGuidance("Enable or disable neutron elastic scattering.");
+    fNeutronElasticCmd->SetParameterName("NeutronElasticEnabled", false);
+
+    fNeutronInelasticCmd = new G4UIcmdWithABool("/physics/setNeutronInelasticEnabled", this);
+    fNeutronInelasticCmd->SetGuidance("Enable or disable neutron inelastic scattering.");
+    fNeutronInelasticCmd->SetParameterName("NeutronInelasticEnabled", false);
+
+    fNeutronCaptureCmd = new G4UIcmdWithABool("/physics/setNeutronCaptureEnabled", this);
+    fNeutronCaptureCmd->SetGuidance("Enable or disable neutron capture.");
+    fNeutronCaptureCmd->SetParameterName("NeutronCaptureEnabled", false);
 }
 
 
@@ -51,6 +69,9 @@ PhysicsMessenger::~PhysicsMessenger()
     delete fBremCmd;
     delete fPairCmd;
     delete fRayCmd;
+    delete fNeutronElasticCmd;
+    delete fNeutronInelasticCmd;
+    delete fNeutronCaptureCmd;
     // If you allocated a G4UIdirectory*, also delete it here
 }
 
@@ -72,5 +93,23 @@ void PhysicsMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     else if (command == fRayCmd) {
         fRayleighEnabled = fRayCmd->GetNewBoolValue(newValue);
         G4cout << "[PhysicsMessenger] rayleighEnabled -> " << (fRayleighEnabled ? "true" : "false") << G4endl;
+    }
+
+    else if (command == fNeutronElasticCmd) {
+        fNeutronElasticEnabled = fNeutronElasticCmd->GetNewBoolValue(newValue);
+        G4cout << "[PhysicsMessenger] neutronElasticEnabled -> " << (fNeutronElasticEnabled ? "true" : "false") << G4endl;
+    }
+
+    else if (command == fNeutronInelasticCmd) {
+        fNeutronInelasticEnabled = fNeutronInelasticCmd->GetNewBoolValue(newValue);
+        G4cout << "[PhysicsMessenger] neutronInelasticEnabled -> " << (fNeutronInelasticEnabled ? "true" : "false") << G4endl;
+    }
+
+    else if (command == fNeutronCaptureCmd) {
+        fNeutronCaptureEnabled = fNeutronCaptureCmd->GetNewBoolValue(newValue);
+        G4cout << "[PhysicsMessenger] neutronCaptureEnabled -> " << (fNeutronCaptureEnabled ? "true" : "false") << G4endl;
+    }
+    else {
+        G4cerr << "[PhysicsMessenger] Unknown command: " << command->GetCommandPath() << G4endl;
     }
 }
