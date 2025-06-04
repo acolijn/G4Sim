@@ -35,6 +35,7 @@
 #include "EventAction.hh"
 #include "SteppingAction.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "EventAction.hh"
 
 namespace G4Sim
@@ -42,8 +43,8 @@ namespace G4Sim
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-ActionInitialization::ActionInitialization(G4Sim::GammaRayHelper* gammaRayHelper)
-  : G4VUserActionInitialization(), fGammaRayHelper(gammaRayHelper)
+ActionInitialization::ActionInitialization(G4Sim::GammaRayHelper* gammaRayHelper, G4Sim::NeutronHelper* neutronHelper)
+  : G4VUserActionInitialization(), fGammaRayHelper(gammaRayHelper), fNeutronHelper(neutronHelper)
 {
 }
 
@@ -51,7 +52,7 @@ ActionInitialization::ActionInitialization(G4Sim::GammaRayHelper* gammaRayHelper
 void ActionInitialization::BuildForMaster() const
 {
   auto eventAction = new EventAction;
-  SetUserAction(new RunAction(eventAction, fGammaRayHelper));
+  SetUserAction(new RunAction(eventAction, fGammaRayHelper, fNeutronHelper));
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -63,11 +64,11 @@ void ActionInitialization::Build() const
   auto eventAction = new EventAction();
   SetUserAction(eventAction);
 
-  auto runAction = new RunAction(eventAction, fGammaRayHelper);
+  auto runAction = new RunAction(eventAction, fGammaRayHelper, fNeutronHelper);
   SetUserAction(runAction);
 
   // Create stepping action with GammaRayHelper from EventAction and GammaRayHelper  
-  SteppingAction* steppingAction = new SteppingAction(eventAction, fGammaRayHelper);
+  SteppingAction* steppingAction = new SteppingAction(eventAction, fGammaRayHelper, fNeutronHelper);
   SetUserAction(steppingAction);
   
   // Set the TrackingAction with the EventAction

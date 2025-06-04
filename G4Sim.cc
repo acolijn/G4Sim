@@ -15,6 +15,7 @@
 
 #include "Randomize.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "CustomEmPhysics.hh"
 #include "PhysicsListManager.hh"
 #include "PhysicsMessenger.hh"
@@ -67,7 +68,7 @@ int main(int argc,char** argv)
 
   // WITH BREM ###################################################
   GammaRayHelper* helper = &GammaRayHelper::Instance();
-  
+  NeutronHelper* helper2 = &NeutronHelper::Instance();
   runManager->SetUserInitialization(new DetectorConstruction());
   
   
@@ -78,7 +79,7 @@ int main(int argc,char** argv)
   PhysicsListManager physicsManager;
   auto* defaultList = physicsManager.CreatePhysicsList();
   runManager->SetUserInitialization(defaultList);
-  runManager->SetUserInitialization(new ActionInitialization(helper));
+  runManager->SetUserInitialization(new ActionInitialization(helper,helper2));
 
 
 
@@ -119,7 +120,7 @@ int main(int argc,char** argv)
       bool ncap = physicsMessenger->IsNeutronCaptureEnabled();
       
       G4cout << "Physics toggles: brem=" << brem << " pair=" << pair << " rayl=" << rayl << " elas=" << elas << " inelas=" << inelas << " ncap=" << ncap << G4endl;
-
+      
       bool needCustom = (!brem || !pair || !rayl || !elas || !inelas || !ncap);
       if (needCustom) {
           G4cout << "Switching to CustomEmPhysics" << G4endl;
@@ -144,8 +145,6 @@ int main(int argc,char** argv)
       delete ui;
   }
  
-
-  
 
   // Job termination
   // Free the store: user actions, physics_list and detector_description are

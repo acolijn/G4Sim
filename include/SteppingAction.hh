@@ -6,6 +6,7 @@
 #include "G4ParticleTable.hh"
 #include "globals.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "Hit.hh"
 #include "SensitiveDetector.hh"
 #include <map>
@@ -45,8 +46,9 @@ class SteppingAction : public G4UserSteppingAction
      * 
      * @param eventAction Pointer to the EventAction object for event-level actions.
      * @param helper Pointer to the GammaRayHelper object for gamma ray-related calculations.
+     * @param helper2 Pointer to the NeutronHelper object for neutron-related calculations.
      */
-    SteppingAction(EventAction* eventAction, GammaRayHelper* helper);
+    SteppingAction(EventAction* eventAction, GammaRayHelper* helper, NeutronHelper* helper2);
 
     /**
      * @brief Destructor for the SteppingAction class.
@@ -91,7 +93,7 @@ class SteppingAction : public G4UserSteppingAction
      * @return G4double The result of the scatter calculation.
      */
     G4double DoScatter(const G4Step* step, G4ThreeVector x0);
-
+    G4double DoScatterNeutron(const G4Step* step, G4ThreeVector x0);
     /**
      * @brief Analyzes the standard step for particle interaction.
      * 
@@ -114,7 +116,7 @@ class SteppingAction : public G4UserSteppingAction
     // Pointer to runaction for histogram mapping
     RunAction* fRunAction;
 
-    
+    NeutronHelper* fNeutronHelper;
     /// Map of hit collections by name.
     std::map<G4String, HitsCollection*> fHitsCollections;
 

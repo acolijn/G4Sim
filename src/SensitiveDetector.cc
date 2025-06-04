@@ -57,36 +57,49 @@ SensitiveDetector::~SensitiveDetector() {}
 
 G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*) {
     G4double edep = step->GetTotalEnergyDeposit();
+    G4String processName = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
+    G4String particleName = step->GetTrack()->GetParticleDefinition()->GetParticleName();
+
+    // neutron processes dont directly register as energy deposit, so we need to assign a tiny energy deposit to make a hit so we can use cuts.
+    if (edep == 0. && particleName == "neutron" && 
+   (processName == "neutronInelastic" || processName == "hadElastic" || processName == "nCapture")) {
+    // Assign tiny deposit to make it count the amount of elastic/inelastic interactions. 
+    // Otherwise it wont register it as a hit with that interaction type.
+    // This is a workaround to ensure that neutron interactions are still counted.
+    edep = 1e-10 * eV;  
+}
+
+    // If energy deposit is still zero, return false (no hit created)
     if (edep == 0.) return false;
 
-    // Get the volume where the step occurred
-    G4StepPoint* preStepPoint = step->GetPreStepPoint();
-    //G4TouchableHandle touchable = preStepPoint->GetTouchable();
-    const G4VTouchable* touchable = preStepPoint->GetTouchable();  // Keep it const since we are not modifying it
+        // Get the volume where the step occurred
+        G4StepPoint* preStepPoint = step->GetPreStepPoint();
+        //G4TouchableHandle touchable = preStepPoint->GetTouchable();
+        const G4VTouchable* touchable = preStepPoint->GetTouchable();  // Keep it const since we are not modifying it
 
-    G4String volumeName = touchable->GetVolume()->GetName();  // Get the name of the current volume
+        G4String volumeName = touchable->GetVolume()->GetName();  // Get the name of the current volume
 
-    // Loop through the registered hit collections and find the correct one for the volume
-    for (size_t i = 0; i < fHitsCollections.size(); ++i) {
-        G4String name = volumeName + "Collection";
-        if (name == collectionName[i]) {  // Match the hit collection with the volume
-            auto* newHit = new G4Sim::Hit();
-            newHit->energyDeposit = edep;
-            newHit->position = step->GetPostStepPoint()->GetPosition();
-            newHit->time = step->GetPostStepPoint()->GetGlobalTime();
-            newHit->trackID = step->GetTrack()->GetTrackID();
-            newHit->parentID = step->GetTrack()->GetParentID();
-            newHit->momentum = step->GetPreStepPoint()->GetMomentum();
-            newHit->particleType = step->GetTrack()->GetDefinition()->GetParticleName();
-            newHit->processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
-            newHit->particleEnergy0 = step->GetPreStepPoint()->GetKineticEnergy();
-            newHit->particleEnergy1 = step->GetPostStepPoint()->GetKineticEnergy();
+        // Loop through the registered hit collections and find the correct one for the volume
+        for (size_t i = 0; i < fHitsCollections.size(); ++i) {
+            G4String name = volumeName + "Collection";
+            if (name == collectionName[i]) {  // Match the hit collection with the volume
+                auto* newHit = new G4Sim::Hit();
+                newHit->energyDeposit = edep;
+                newHit->position = step->GetPostStepPoint()->GetPosition();
+                newHit->time = step->GetPostStepPoint()->GetGlobalTime();
+                newHit->trackID = step->GetTrack()->GetTrackID();
+                newHit->parentID = step->GetTrack()->GetParentID();
+                newHit->momentum = step->GetPreStepPoint()->GetMomentum();
+                newHit->particleType = step->GetTrack()->GetDefinition()->GetParticleName();
+                newHit->processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
+                newHit->particleEnergy0 = step->GetPreStepPoint()->GetKineticEnergy();
+                newHit->particleEnergy1 = step->GetPostStepPoint()->GetKineticEnergy();
 
-            // Insert the hit into the correct hit collection
-            fHitsCollections[i]->insert(newHit);
-            break;  // We found the right collection, no need to continue the loop
+                // Insert the hit into the correct hit collection
+                fHitsCollections[i]->insert(newHit);
+                break;  // We found the right collection, no need to continue the loop
+            }
         }
-    }
 
     fTotalEnergyDeposit += edep;  // Accumulate total energy deposit
     return true;

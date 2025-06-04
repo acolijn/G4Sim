@@ -28,10 +28,17 @@ RunActionMessenger::RunActionMessenger(RunAction* action)
     fOutputFileNameCmd->SetParameterName("outputFileName", false);
     fOutputFileNameCmd->SetDefaultValue("G4Sim.root");
 
+    fSimulationModeCmd = new G4UIcmdWithAString("/run/setSimulationMode", this);
+    fSimulationModeCmd->SetGuidance("Set simulation mode: 'photon' or 'neutron'");
+    fSimulationModeCmd->SetParameterName("simulationMode", false);
+    fSimulationModeCmd->SetCandidates("photon neutron");
+    fSimulationModeCmd->SetDefaultValue("photon");
+
 }
 
 RunActionMessenger::~RunActionMessenger() {
     delete fFastSimulationCmd;
+    delete fSimulationModeCmd;
 }
 
 void RunActionMessenger::SetNewValue(G4UIcommand* command, G4String newValue) {
@@ -43,7 +50,10 @@ void RunActionMessenger::SetNewValue(G4UIcommand* command, G4String newValue) {
         fRunAction->SetMaxEnergy(fMaxEnergyCmd->GetNewDoubleValue(newValue));
     } else if (command == fOutputFileNameCmd) {
         fRunAction->SetOutputFileName(newValue);
-    }
+    } else if (command == fSimulationModeCmd) {
+    fRunAction->SetSimulationMode(newValue);
+}
 }
 
 } // namespace G4Sim
+

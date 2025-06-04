@@ -126,8 +126,9 @@ def generate_run_settings(run_settings, path_manager, job_id):
         f"/run/setNumberOfScatters {run_settings['numberOfScatters'] if 'numberOfScatters' in run_settings else -1}",
         f"/run/setMaxEnergy {run_settings.get('maxEnergy', '2 MeV') if 'maxEnergy' in run_settings else -1.0}",
         f"/run/printProgress {run_settings['printProgress'] if 'printProgress' in run_settings else 10000}",
+        f"/run/setSimulationMode {run_settings['fast_simulation_mode'] if 'fast_simulation_mode' in run_settings else 'photon'}",
     ]
-    
+
     return "\n".join(commands)
 
 def generate_physics_settings(physics_settings):
@@ -143,11 +144,19 @@ def generate_physics_settings(physics_settings):
     pair_enabled     = physics_settings.get("pair_enabled", True)
     rayleigh_enabled = physics_settings.get("rayleigh_enabled", True)
 
+    elastic_enabled  = physics_settings.get("elastic_enabled", True)
+    inelastic_enabled = physics_settings.get("inelastic_enabled", True)
+    capture_enabled = physics_settings.get("capture_enabled", True)
+
+
     commands = []
     commands.append(f"/physics/setBremEnabled {str(brem_enabled).lower()}")    # yields "true" or "false"
     commands.append(f"/physics/setPairEnabled {str(pair_enabled).lower()}")
     commands.append(f"/physics/setRayleighEnabled {str(rayleigh_enabled).lower()}")
-
+    commands.append(f"/physics/setNeutronElasticEnabled {str(elastic_enabled).lower()}")
+    commands.append(f"/physics/setNeutronInelasticEnabled {str(inelastic_enabled).lower()}")
+    commands.append(f"/physics/setNeutronCaptureEnabled {str(capture_enabled).lower()}")
+   
     return "\n".join(commands)
 
 
@@ -259,6 +268,7 @@ def submit_job(mac_file, path_manager, job_name="G4Job"):
         +UseOS                  = "el9"
         ## This job can run up to 4 hours. Can choose "express", "short", "medium", or "long".
         +JobCategory            = "short"
+        request_memory          = 8G
         queue
             """
     with open(submit_file, 'w') as file:
@@ -467,7 +477,7 @@ def update_master_rundb(rundb, settings, path_manager, args):
         "particle": gps_settings["particle"],
         "ion": gps_settings["ion"] if gps_settings["particle"] == "ion" else "None",
         "energy": gps_settings["energy"] if "energy" in gps_settings else "None",
-        "fastSimulation": run_settings["fastSimulation"] if "fastSimulation" in run_settings else "None",
+        "fastSimulation": f"true ({run_settings.get('fast_simulation_mode', 'photon')})" if run_settings.get("fastSimulation", False) else "None",
         "maxScatters": run_settings.get("numberOfScatters", 1) if "numberOfScatters" in run_settings else -1,
         "maxEnergy": run_settings.get("maxEnergy", "2 MeV") if "maxEnergy" in run_settings else "None",
         "sourceVolume": gps_settings["posConfine"] if gps_settings["posType"] == "Volume" else "",

@@ -19,7 +19,16 @@
         "outputFileName": "std",
         "fastSimulation": "false",
         "numberOfScatters": -999,
-        "maxEnergy": "-1 MeV",
-        "printProgress": 10000
+        "maxEnergy": "-1.0 MeV",
+        "printProgress": 1000000
+    },
+
+    "normalSimulation_physics_settings":{
+        "brem_enabled": true,
+        "pair_enabled": true,
+        "rayleigh_enabled": true,
+        "elastic_enabled": true,
+        "inelastic_enabled": true,
+        "capture_enabled": true
     }
 }

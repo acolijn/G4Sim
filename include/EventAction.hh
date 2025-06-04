@@ -38,6 +38,7 @@
 #include "globals.hh"
 
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include <vector>
 #include <mutex>
 
@@ -103,7 +104,7 @@ class EventAction : public G4UserEventAction
     std::vector<G4int>& GetNcap(){return fNcap;};
     std::vector<G4int>& GetNelas(){return fNelas;};
     std::vector<G4int>& GetNinelas(){return fNinelas;};
-
+    std::vector<G4int>& GetNfiss(){return fNfiss;};
 
     void AddWeight(G4double weight) { fLogWeight += weight; }
     void AnalyzeHits(const G4Event* event);
@@ -112,6 +113,7 @@ class EventAction : public G4UserEventAction
     G4bool IsFastSimulation() { return fFastSimulation; }
     G4int GetNumberOfScatters() { return fNumberOfScatters;}
     G4double GetMaxEnergy() { return fMaxEnergy; }
+    G4String GetSimulationMode() { return fSimMode; }
     G4int GetNumberOfScattersMax() { return fNumberOfScattersMax; }
     G4double GetAvailableEnergy() { return fAvailableEnergy; }
     G4double GetWeight() { return fLogWeight; }
@@ -122,6 +124,7 @@ class EventAction : public G4UserEventAction
     void SetFastSimulation(G4bool fast) { fFastSimulation = fast; }
     void SetNumberOfScatters(G4int n) { fNumberOfScatters = n; }
     void SetMaxEnergy(G4double e) { fMaxEnergy = e; }
+    void SetSimulationMode(G4String mode) { fSimMode = mode; }
     void SetAvailableEnergy(G4double e) { fAvailableEnergy = e; }
     void ReduceAvailableEnergy(G4double e) { fAvailableEnergy -= e; } 
     void SetHasBeenInXenon(G4bool b) { fHasBeenInXenon = b; }
@@ -139,8 +142,8 @@ class EventAction : public G4UserEventAction
     static void SetClusteringParameters(const std::map<G4String, std::pair<G4double, G4double>>& params);
     void AddHitsCollectionName(const G4String& name);
     void RenormalizeHitTimes(G4HCofThisEvent* HCE);
-    void CountInteractions(std::vector<Hit*>& hits, G4int& ncomp, G4int& nphot, G4int& ncap, G4int& nelas, G4int& ninelas);
-    void StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot, G4int ncap, G4int nelas, G4int ninelas);
+    void CountInteractions(std::vector<Hit*>& hits, G4int& ncomp, G4int& nphot, G4int& ncap, G4int& nelas, G4int& ninelas, G4int& nfiss);
+    void StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot, G4int ncap, G4int nelas, G4int ninela, G4int nfiss);
 
 
 
@@ -185,7 +188,7 @@ class EventAction : public G4UserEventAction
     std::vector<G4int> fNcap;
     std::vector<G4int> fNelas;
     std::vector<G4int> fNinelas;
-
+    std::vector<G4int> fNfiss;
     std::set<G4int> fBremsGammasToTrack;   
     std::set<G4int> fBremsGammasThatEscaped; 
     
@@ -199,12 +202,15 @@ class EventAction : public G4UserEventAction
     G4double fMaxEnergy = 0.0;
     // avaliable energy for scattering energy deposits (relevant for muliple scattering events)
     G4double fAvailableEnergy = 0.0;
+    
 
     //static std::mutex mtx; // Mutex for thread safety
 
     std::vector<G4String> fHitsCollectionNames;
 
     GammaRayHelper* fGammaRayHelper;
+    NeutronHelper* fNeutronHelper;
+    G4String fSimMode = "photon"; // default simulation mode is photon
 
     G4int verbosityLevel=0;
     static std::map<G4String, std::pair<G4double, G4double>> fClusteringParameters;

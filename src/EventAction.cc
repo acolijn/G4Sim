@@ -12,6 +12,7 @@
 #include "G4SDManager.hh"
 #include "Hit.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "SensitiveDetector.hh"
 #include "G4LogicalVolumeStore.hh"
 #include "G4PhysicalVolumeStore.hh"
@@ -26,11 +27,11 @@ namespace G4Sim {
 
 //std::mutex EventAction::mtx;
 
-EventAction::EventAction() : G4UserEventAction(), fGammaRayHelper(&GammaRayHelper::Instance())
-{
+EventAction::EventAction() : G4UserEventAction(), fGammaRayHelper(&GammaRayHelper::Instance()), fNeutronHelper(&NeutronHelper::Instance()) {
   // set printing per each event
   G4RunManager::GetRunManager()->SetPrintProgress(1);
 }
+
 
 /**
  * @brief Adds a hits collection name to the EventAction.
@@ -43,13 +44,14 @@ void EventAction::AddHitsCollectionName(const G4String& name) {
     G4cout << "EventAction::AddHitsCollectionName: " << name << G4endl;
     fHitsCollectionNames.push_back(name);
 }
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......Sets
 
 void EventAction::BeginOfEventAction(const G4Event* event)
 {
 
   if (verbosityLevel > 0)
     G4cout << "EventAction::BeginOfEventAction..... NEXT" << G4endl;	
+
 
   // Reset variables
   ResetVariables();
@@ -71,6 +73,7 @@ void EventAction::BeginOfEventAction(const G4Event* event)
   if(IsFastSimulation()) {
     // Only when here for first time we do the initialization of teh CDFs (first time is taken care of inside function).
     fGammaRayHelper->InitializeCDFs(primaryVertex->GetPrimary()->GetKineticEnergy());  
+    fNeutronHelper->InitializeCDFs(primaryVertex->GetPrimary()->GetKineticEnergy());
   }
 
   if(!fInitializedGraphs) {
@@ -84,45 +87,46 @@ void EventAction::BeginOfEventAction(const G4Event* event)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 void EventAction::ResetVariables() {
-  fNumberOfScatters = 0;
-  // this is used in the standard MC to see if the gamma ray has already been in xenon or not
-  fHasBeenInXenon = false;
-  // Reset all bits in the event type 
-  // This is set to "direct_gamma" in the beginning and changed to "scattered_gamma" if a scatter is made
-  // Other classifications can also be added, like if there was a brem in the event or if a brem escaped.
-  fEventType = 0;
-  SetPrimaryClassification(DIRECT_GAMMA);
+    fNumberOfScatters = 0;
+    // this is used in the standard MC to see if the gamma ray has already been in xenon or not
+    fHasBeenInXenon = false;
+    // Reset all bits in the event type 
+    // This is set to "direct_gamma" in the beginning and changed to "scattered_gamma" if a scatter is made
+    // Other classifications can also be added, like if there was a brem in the event or if a brem escaped.
+    fEventType = 0;
+    SetPrimaryClassification(DIRECT_GAMMA);
 
-  // reset the bremstrahlung IDs that were tracked last event
-  ResetBremsGammaTracking();
+    // reset the bremstrahlung IDs that were tracked last event
+    ResetBremsGammaTracking();
 
-  // the avalaible energy is the maximum energy that can be deposited in the event
-  // it will be reduced after every energy deposit
+    // the avalaible energy is the maximum energy that can be deposited in the event
+    // it will be reduced after every energy deposit
 
-  fAvailableEnergy = fMaxEnergy;
-  //G4cout << "EventAction::ResetVariables: fAvailableEnergy = " << fAvailableEnergy << G4endl;
-  //G4cout << "EventAction::ResetVariables: fMaxEnergy = " << fMaxEnergy << G4endl;
+    fAvailableEnergy = fMaxEnergy;
+    //G4cout << "EventAction::ResetVariables: fAvailableEnergy = " << fAvailableEnergy << G4endl;
+    //G4cout << "EventAction::ResetVariables: fMaxEnergy = " << fMaxEnergy << G4endl;
 
-  fLogWeight = 0.0;
-  fXp = 0.0;
-  fYp = 0.0;
-  fZp = 0.0;
+    fLogWeight = 0.0;
+    fXp = 0.0;
+    fYp = 0.0;
+    fZp = 0.0;
 
-  // cluster information
-  fE.clear();
-  fX.clear();
-  fY.clear();
-  fZ.clear();
-  fW.clear();
-  fID.clear();
-  // detector information
-  fEdet.clear();
-  fNdet.clear();
-  fNphot.clear();
-  fNcomp.clear();
+    // cluster information
+    fE.clear();
+    fX.clear();
+    fY.clear();
+    fZ.clear();
+    fW.clear();
+    fID.clear();
+    // detector information
+    fEdet.clear();
+    fNdet.clear();
+    fNphot.clear();
+    fNcomp.clear();
     fNcap.clear();
     fNelas.clear();
     fNinelas.clear();
+    fNfiss.clear();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -131,7 +135,7 @@ void EventAction::EndOfEventAction(const G4Event* event)
 {
   if(verbosityLevel>0) G4cout << "EventAction::EndOfEventAction..... Analyze hits and cluster...." << G4endl;
   AnalyzeHits(event);
-
+    
   // if no scatters were made we are dealing with an event that did nothing inside the fiducial volume
   // such an event should have a weight=1.0
   if(fNumberOfScatters == 0) fLogWeight = 0.0;
@@ -153,7 +157,7 @@ void EventAction::EndOfEventAction(const G4Event* event)
   analysisManager->FillNtupleDColumn(0, 4, fYp);
   analysisManager->FillNtupleDColumn(0, 5, fZp);
   analysisManager->AddNtupleRow(0);
-
+    
   if(verbosityLevel>0) G4cout << "EventAction::EndOfEventAction: Done...." << G4endl;	
 
 }
@@ -205,27 +209,36 @@ void EventAction::RenormalizeHitTimes(G4HCofThisEvent* HCE) {
 
 
 /**
- * @brief Counts the number of Compton and photoelectric interactions in a list of hits.
- *
- * This function iterates through a vector of Hit pointers and increments the counters
- * for Compton interactions (`ncomp`) and photoelectric interactions (`nphot`) based on
- * the `processType` of each hit. Only interactions of the primary gamma ray are counted.
- *
- * @param hits A vector of pointers to Hit objects to be analyzed.
- * @param ncomp An integer reference to store the count of Compton interactions.
- * @param nphot An integer reference to store the count of photoelectric interactions.
+    * @brief Counts the number of Compton and photoelectric interactions in a list of hits.
+    *
+    * This function iterates through a vector of Hit pointers and increments the counters
+    * for Compton interactions (`ncomp`) and photoelectric interactions (`nphot`) based on
+    * the `processType` of each hit. Only interactions of the primary gamma ray are counted.
+    *
+    * @param hits A vector of pointers to Hit objects to be analyzed.
+    * @param ncomp An integer reference to store the count of Compton interactions.
+    * @param nphot An integer reference to store the count of photoelectric interactions.
     * @param ncap An integer reference to store the count of neutron capture interactions.
     * @param nelas An integer reference to store the count of hadronic elastic interactions.
     * @param ninelas An integer reference to store the count of hadronic inelastic interactions.
  */
-void EventAction::CountInteractions(std::vector<Hit*>& hits, int& ncomp, int& nphot, int& ncap, int& nelas, int& ninelas) {
+void EventAction::CountInteractions(std::vector<Hit*>& hits, int& ncomp, int& nphot, int& ncap, int& nelas, int& ninelas, int& nfiss) {
 
 
     for (const auto& hit : hits) {
+        
+        
         if (hit->trackID != 1) continue;  // Only primary track hits
+
         if (hit->processType == "compt") ncomp++;
         if (hit->processType == "phot") nphot++;
+        if (hit->processType == "nCapture") ncap++;
+        if (hit->processType == "hadElastic") nelas++;
+        if (hit->processType == "neutronInelastic") ninelas++;
+        if (hit->processType == "nFission") nfiss++;
+        
     }
+    
 }
 
 /**
@@ -291,6 +304,9 @@ void EventAction::AnalyzeHits(const G4Event* event) {
 
     // Get the list of sensitive detector names
     std::vector<G4String> sensitiveDetectorNames = GetSensitiveDetectorNames();
+
+              
+
     // Loop over all sensitive detectors
     int collectionId = 0;
     for (const G4String& sdName : sensitiveDetectorNames) {
@@ -320,12 +336,13 @@ void EventAction::AnalyzeHits(const G4Event* event) {
             spatialThreshold = GetSpatialThreshold(collectionName) * mm;
             timeThreshold = GetTimeThreshold(collectionName) * ns;
 
+           
             // Find the hits in this collection
             for (G4int j = 0; j < n_hit; ++j) {
                 Hit* hit = (*hitsCollection)[j];
-                hitList.push_back(hit);  // Add hit to the list
+                hitList.push_back(hit);  
+                 // Add hit to the list
             }
-
 
         }    
         // Call the function that processes the hits: all hist in teh same senstive detector are processed together
@@ -335,12 +352,16 @@ void EventAction::AnalyzeHits(const G4Event* event) {
         G4int ncap = 0;
         G4int nelas = 0;
         G4int ninelas = 0;
-        CountInteractions(hitList, ncomp, nphot, ncap, nelas, ninelas);
+        G4int nfiss = 0;
+        CountInteractions(hitList, ncomp, nphot, ncap, nelas, ninelas, nfiss);
         // Cluster hits and store the data
         std::vector<Cluster> clusters;
+
+        
+
         ClusterHits(hitList, spatialThreshold, timeThreshold, clusters, static_cast<int>(collectionId));  
         // Store the data for each collection
-        StorePerCollectionData(clusters, ncomp, nphot, ncap, nelas, ninelas);
+        StorePerCollectionData(clusters, ncomp, nphot, ncap, nelas, ninelas, nfiss);
         // Increment the collection ID
         collectionId++;
     }
@@ -383,8 +404,9 @@ std::vector<G4String> EventAction::GetSensitiveDetectorNames() {
     * @param ncap The number of neutron capture interactions.
     * @param nelas The number of hadronic elastic interactions.
     * @param ninelas The number of hadronic inelastic interactions.
+    * @param nfiss The number of fission interactions.
  */
-void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot) {
+void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G4int ncomp, G4int nphot, G4int ncap, G4int nelas, G4int ninelas, G4int nfiss) {
     G4double edet = 0.0;
     G4int nclus = 0;
 
@@ -394,6 +416,7 @@ void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G
         edet += cluster.energyDeposit / keV;
 
         fE.push_back(cluster.energyDeposit / keV);
+    
         fX.push_back(cluster.position.x());
         fY.push_back(cluster.position.y());
         fZ.push_back(cluster.position.z());
@@ -406,10 +429,11 @@ void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G
     fEdet.push_back(edet);
     fNdet.push_back(nclus);
     fNphot.push_back(nphot);
-    fNcomp.push_back(ncomp);
+    fNcomp.push_back(ncomp);  
     fNcap.push_back(ncap);
     fNelas.push_back(nelas);
     fNinelas.push_back(ninelas);
+    fNfiss.push_back(nfiss);
 }
 
 /**
@@ -423,12 +447,14 @@ void EventAction::StorePerCollectionData(const std::vector<Cluster>& clusters, G
  */
 void EventAction::ClusterHits(std::vector<Hit*>& hits, G4double spatialThreshold, G4double timeThreshold, std::vector<Cluster>& clusters, int collectionID) {
     if (hits.empty()) return;
-
+    
     // Clustering the hits
     for (auto& hit : hits) {
-        if (verbosityLevel > 0) hit->Print();
-        if (hit->used) continue;
 
+        if (verbosityLevel > 0) hit->Print();
+        
+        if (hit->used) continue;
+        
         bool addedToCluster = false;
         for (auto& cluster : clusters) {
             if (CalculateDistance(hit->position, cluster.position) < spatialThreshold &&

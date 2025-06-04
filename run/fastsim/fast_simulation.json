@@ -18,6 +18,7 @@
     "run_settings":{	
         "outputFileName": "fast",
         "fastSimulation": "true",
+        "fast_simulation_mode": "photon",
         "numberOfScatters": 1,
         "maxEnergy": "0.2 MeV",
         "printProgress": 10000

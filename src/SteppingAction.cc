@@ -45,6 +45,7 @@
 #include "G4AnalysisManager.hh"
 #include "G4SDManager.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "G4Gamma.hh"
 
 #include <vector>
@@ -60,12 +61,14 @@ namespace G4Sim
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-SteppingAction::SteppingAction(EventAction* eventAction, GammaRayHelper* helper)
+
+SteppingAction::SteppingAction(EventAction* eventAction, GammaRayHelper* helper, NeutronHelper* helper2)
     : G4UserSteppingAction(),
       fEventAction(eventAction),
       fScoringVolume(nullptr),
       particleTable(G4ParticleTable::GetParticleTable()),
       fGammaRayHelper(helper), 
+      fNeutronHelper(helper2),
       fHitsCollectionInitialized(false){
   // the hits collection is not yet initialized
   fHitsCollectionInitialized = false;
@@ -94,6 +97,9 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     AnalyzeStandardStep(step);
     return;
   } 
+  
+  G4String FastSimMode = fEventAction->GetSimulationMode();
+
 
   if (verbosityLevel >= 2){
     G4cout <<"SteppingAction::UserSteppingAction"<<G4endl;
@@ -124,9 +130,20 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     //
     // * Generate an interaction somewhere in the LXeFiducial volume
     //
-    auto result = fGammaRayHelper->GenerateInteractionPoint(step);
+    // auto result = fGammaRayHelper->GenerateInteractionPoint(step);
+
+    ///IMPORTANT CHANGE BACK TO GAMMARAYHELPER FOR GAMMA SIMULATION
+    // G4cout << "Attenuation length used for generating interaction point: "  << G4endl;
+    std::pair<G4ThreeVector, G4double> result;
+    if (FastSimMode == "neutron") {
+      result = fNeutronHelper->GenerateInteractionPoint(step);
+    }
+    if (FastSimMode == "photon") {
+      result = fGammaRayHelper->GenerateInteractionPoint(step);
+    }
+
     G4ThreeVector interactionPoint = result.first;
-    // calculate the weight of the event and add it to teh event sum of logs
+    // calculate the weight of the event and add it to the event sum of logs
     fEventAction->AddWeight(std::log(result.second));
     if (verbosityLevel >= 2){
       G4cout << "SteppingAction::UserSteppingAction   Interaction point        : " << interactionPoint/cm << G4endl;
@@ -138,7 +155,18 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     //     - if the maximum allowed energy is below the photo-peak ->
     //                  i) ignore PE effect and assign a weight. Then just do Compton scatter
     //                  ii) calculate the maximum scattering angle possible and generate a Compton scatter. Calculate the event weight based on the non-sampled scattering angles
-    G4double weight = DoScatter(step, interactionPoint);
+    
+    ///IMPORTANT CHANGE BACK TO GAMMARAYHELPER FOR GAMMA SIMULATION
+    // G4double weight = DoScatter(step, interactionPoint);
+    G4double weight = 1.0;
+    if (FastSimMode == "neutron") {
+      weight = DoScatterNeutron(step, interactionPoint);
+    }
+    if (FastSimMode == "photon") {
+      weight = DoScatter(step, interactionPoint);
+    }
+    // G4cout << "Weight after scatter: " << weight << G4endl;
+
     fEventAction->AddWeight(std::log(weight));
     if (verbosityLevel >= 2){
       G4cout << "SteppingAction::UserSteppingAction   Scatter weight           : " << weight << G4endl;
@@ -157,10 +185,22 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     // check if the particle is a geantino
     if (particleName == "geantino") {
       // get the attenuation length of the material for the gamma ray at the current energy
-      G4double attenuation_length = fGammaRayHelper->GetAttenuationLength(step->GetPreStepPoint()->GetKineticEnergy(), 
-                                                                          volume_pre->GetMaterial());
-      G4double weight = std::exp(-step->GetStepLength() / attenuation_length);
+      ///IMPORTANT CHANGE BACK TO GAMMARAYHELPER FOR GAMMA SIMULATION
+      // G4double attenuation_length = fGammaRayHelper->GetAttenuationLength(step->GetPreStepPoint()->GetKineticEnergy(), 
       
+      // G4cout << "Attenuation length after scatter: "  << G4endl;  
+      G4double attenuation_length;
+      if (FastSimMode == "neutron") {
+      attenuation_length = fNeutronHelper->GetAttenuationLength(step->GetPreStepPoint()->GetKineticEnergy(), 
+                                                                          volume_pre->GetMaterial());
+    }                              
+      if (FastSimMode == "photon") {
+      attenuation_length = fGammaRayHelper->GetAttenuationLength(step->GetPreStepPoint()->GetKineticEnergy(), 
+                                                                          volume_pre->GetMaterial());
+    }     
+      
+      G4double weight = std::exp(-step->GetStepLength() / attenuation_length);
+
       if (verbosityLevel>=2){
         G4cout << "SteppingAction::UserSteppingAction   Transport material       : " << volume_pre->GetMaterial()->GetName() << G4endl;
         G4cout << "SteppingAction::UserSteppingAction   Attenuation length       : " << attenuation_length / cm << G4endl;
@@ -208,7 +248,6 @@ G4double SteppingAction::DoScatter(const G4Step* step, G4ThreeVector x0){
   G4double totalRelevantCrossSection = photoelectricCrossSection + comptonCrossSection;
   // Effective probabilities excluding pair production
   G4double effectivePEProbability = photoelectricCrossSection / totalRelevantCrossSection;
-  G4double effectiveComptonProbability = comptonCrossSection / totalRelevantCrossSection;
 
   G4double maxEnergy = fEventAction->GetAvailableEnergy();
   G4double rand = G4UniformRand();
@@ -293,6 +332,143 @@ G4double SteppingAction::DoScatter(const G4Step* step, G4ThreeVector x0){
 
   return weight;
 }
+
+
+
+G4double SteppingAction::DoScatterNeutron(const G4Step* step, G4ThreeVector x0) {
+    G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+
+    // Get neutron energy
+    G4double energy = step->GetPreStepPoint()->GetKineticEnergy();
+    G4double energyDeposit = 0.0;
+    G4double weight = 1.0;
+
+    // Get volume and material
+    G4LogicalVolume* volume_pre = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume();
+    G4Material* material = volume_pre->GetMaterial();
+
+    // Retrieve neutron cross sections from NeutronHelper
+    G4double elasticXS  = fNeutronHelper->GetElasticCrossSection(energy, material);
+    G4double inelasticXS = fNeutronHelper->GetInelasticCrossSection(energy, material);
+    G4double captureXS  = fNeutronHelper->GetCaptureCrossSection(energy, material);
+    G4double fissionXS  = fNeutronHelper->GetFissionCrossSection(energy, material);
+    
+    // Compute total neutron interaction cross-section
+    G4double totalCrossSection = elasticXS + inelasticXS + captureXS + fissionXS;
+
+    // Effective probabilities
+    G4double effectiveElasticProb = elasticXS / totalCrossSection;
+   
+
+    G4double maxEnergy = fEventAction->GetAvailableEnergy();
+    G4double rand = G4UniformRand();
+    G4Track* track = step->GetTrack();
+    G4String process = "";
+    //used (rand < effectiveElasticProb && energy < maxEnergy) before
+    if (true) {
+        process = "hadElastic";
+        weight *=  effectiveElasticProb;
+        // Perform elastic neutron scattering
+       
+        InteractionData elastic = fNeutronHelper->DoElasticNeutronScatter(step, x0);
+        energyDeposit = elastic.energyDeposited;
+
+        G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+        G4ParticleDefinition* particleDefinition = particleTable->FindParticle("geantino");
+
+        // G4cout << "COS THETA: " << elastic.cosTheta << G4endl;
+        analysisManager->FillH1(2, elastic.cosTheta);
+        //
+        // Create the dynamic particle
+        //
+        //  - the particle is again a geantino and it can be used to further track
+        //  - the direction of the particle is the direction after the Compton scatter
+        //  - the energy of the particle is the energy after the Compton scatter
+        //
+        G4DynamicParticle* dynamicParticle = new G4DynamicParticle(particleDefinition, elastic.dir, elastic.energy);
+        //
+        // Create the new track
+        //
+        //  - use the newly created dynamic particle
+        //  - start the track at the position of the Compton scatter
+        //
+        G4Track* newTrack = new G4Track(dynamicParticle, 0.0, x0);
+        //
+        // Set additional properties of the new track:
+        //  - the inheritance of the track ID
+        //  - the track is good for tracking
+        //
+        newTrack->SetParentID(track->GetParentID());
+        newTrack->SetGoodForTrackingFlag(true);
+        // add new track to collection of secondaries
+        G4TrackVector* secondaries = const_cast<G4TrackVector*>(step->GetSecondary());
+        secondaries->push_back(newTrack);
+       
+    } 
+    // else if (rand < (effectiveElasticProb + effectiveInelasticProb)) {
+    //     process = "neutronInelastic";
+
+    //     // Inelastic scatter (producing secondary particles and energy loss)
+    //     InteractionData inelastic = fNeutronHelper->DoInelasticNeutronScatter(step, x0);
+    //     energyDeposit = inelastic.energyDeposited;
+
+    //     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+    //     G4ParticleDefinition* particleDefinition = particleTable->FindParticle("geantino");
+    //     //
+    //     // Create the dynamic particle
+    //     //
+    //     //  - the particle is again a geantino and it can be used to further track
+    //     //  - the direction of the particle is the direction after the Compton scatter
+    //     //  - the energy of the particle is the energy after the Compton scatter
+    //     //
+    //     G4DynamicParticle* dynamicParticle = new G4DynamicParticle(particleDefinition, inelastic.dir, inelastic.energy);
+    //     //
+    //     // Create the new track
+    //     //
+    //     //  - use the newly created dynamic particle
+    //     //  - start the track at the position of the Compton scatter
+    //     //
+    //     G4Track* newTrack = new G4Track(dynamicParticle, 0.0, x0);
+    //     //
+    //     // Set additional properties of the new track:
+    //     //  - the inheritance of the track ID
+    //     //  - the track is good for tracking
+    //     //
+    //     newTrack->SetParentID(track->GetParentID());
+    //     newTrack->SetGoodForTrackingFlag(true);
+    //     // add new track to collection of secondaries
+    //     G4TrackVector* secondaries = const_cast<G4TrackVector*>(step->GetSecondary());
+    //     secondaries->push_back(newTrack);
+
+    // } 
+    // else {
+    //     process = "nCapture";
+    //     // Neutron capture (n,γ) -> full energy deposition
+    //     energyDeposit = energy;
+    // }
+
+    // Update available energy in the event
+    fEventAction->ReduceAvailableEnergy(energyDeposit);
+    track->SetTrackStatus(fStopAndKill); // Kill the neutron after interaction
+
+    // Create and register hit
+    Hit* newHit = new Hit();
+    newHit->energyDeposit = energyDeposit;
+    newHit->position = x0;
+    newHit->time = step->GetPreStepPoint()->GetGlobalTime();
+    newHit->trackID = step->GetTrack()->GetTrackID();
+    newHit->parentID = step->GetTrack()->GetParentID();
+    newHit->particleType = "manual";
+    newHit->processType = process;
+    
+    
+    
+    AddHitToCollection(newHit, "LXeFiducialCollection");
+
+    return weight;
+}
+
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -392,7 +568,7 @@ void SteppingAction::AddHitToCollection(Hit* newHit, G4String collectionName){
  * @param step The G4Step object representing the step in the simulation.
  */
 void SteppingAction::AnalyzeStandardStep(const G4Step* step){
-    
+  
   // identify a gamma ray with a compton scatter outside the primary particle outside the xenon.......
   const G4Track* track = step->GetTrack();
   G4int trackID = track->GetTrackID();
@@ -400,8 +576,11 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
   if(verbosityLevel >= 2) Print(step);
 
 
-  G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
-  if (!processType.empty()) {
+  // check the primary gamma ray....
+  if (trackID == 1){
+
+    G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
+    if (!processType.empty()) {
         auto runAction = const_cast<RunAction*>(static_cast<const RunAction*>(
             G4RunManager::GetRunManager()->GetUserRunAction()));
         
@@ -411,12 +590,9 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     }
 
 
-  // check the primary gamma ray....
-  if (trackID == 1){
-    
     G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
     G4String volume_name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
-
+    
     // check if particle is inside the xenon volume
     if ((volume_name == "LXeFiducial") || (volume_name == "LiquidXenon") || (volume_name == "GaseousXenon")) {
       // the particle saw liquid xenon
@@ -437,6 +613,33 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     //if ((processType == "compt") && (!fEventAction->HasBeenInXenon())) {
 
     if ((processType == "compt") && ((volume_name != "LXeFiducial") && (volume_name != "LiquidXenon"))) {
+      fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
+    }
+
+    
+    // if process is elastic and energy is initial energy
+    if ((processType == "hadElastic") && (volume_name == "LXeFiducial" )) {
+        G4double initialEnergy = track->GetVertexKineticEnergy()
+
+        if ( G4double energyPre = step->GetPreStepPoint()->GetKineticEnergy() == initialEnergy){
+          // Retrieve the momentum directions before and after the step
+          
+          G4double Recoil_energy = step->GetPreStepPoint()->GetKineticEnergy()-step->GetPostStepPoint()->GetKineticEnergy();
+          G4double Total_deposit = step->GetTotalEnergyDeposit();
+
+          G4ThreeVector preDir  = step->GetPreStepPoint()->GetMomentumDirection();
+          G4ThreeVector postDir = step->GetPostStepPoint()->GetMomentumDirection();
+      
+          // Compute the angle between these two directions (in radians)
+          G4double cosTheta = preDir.dot(postDir);
+          G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+          analysisManager->FillH1(2, cosTheta);
+          analysisManager->FillH1(3, Recoil_energy / keV);
+          analysisManager->FillH2(0, cosTheta, Recoil_energy / keV);
+        }
+    }
+
+    if ( ((processType == "hadElastic") || (processType == "neutronInelastic") || (processType == "nCapture") ) && ((volume_name != "LXeFiducial") && (volume_name != "LiquidXenon"))) {
       fEventAction->SetPrimaryClassification(SCATTERED_GAMMA);
     }
     //if ((processType == "compt") || processType == "phot") && (fEventAction->HasBeenInXenon()) {

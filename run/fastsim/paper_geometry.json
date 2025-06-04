@@ -1,0 +1,69 @@
+{
+    "world": {
+      "size": 11.0
+    },
+    "detector": "Paper_geometry",
+    "description": "geometry from paper",
+    "version": "1",
+    "volumes": [
+      {
+        "name": "InnerCryostat",
+        "shape": "union",
+        "material": "StainlessSteel",
+        "parent": "World",
+        "color": [0.5, 0.5, 0.5, 0.3],
+        "components": [
+          {
+            "name": "InnerCryostatCylinder",
+            "shape": "tubs",
+            "dimensions": { "rMin": 0, "rMax": 655, "z": 1500, "startAngle": 0.0, "spanningAngle": 360.0 },
+            "placement": [{ "x": 0.0, "y": 0.0, "z": 0 }]
+          },
+          {
+            "name": "InnerCryostatBottomFlange",
+            "shape": "tubs",
+            "dimensions": { "rMin": 0.0, "rMax": 655, "z": 5, "startAngle": 0.0, "spanningAngle": 360.0 },
+            "placement": [{ "x": 0.0, "y": 0.0, "z": -752.5 }]
+          },
+          {
+            "name": "InnerCryostatTopFlange",
+            "shape": "tubs",
+            "dimensions": { "rMin": 0.0, "rMax": 655, "z": 5, "startAngle": 0.0, "spanningAngle": 360.0 },
+            "placement": [{ "x": 0.0, "y": 0.0, "z": 752.5 }]
+          }
+        ],
+        "placement": [{ "x": 0.0, "y": 0.0, "z": 0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 } }]
+      },
+     {
+        "name": "LiquidXenon",
+        "shape": "tubs",
+        "material": "LXe",
+        "parent": "InnerCryostat",
+        "color": [0.0, 0.0, 1.0, 0.3],
+        "active": true,
+        "clustering": {
+          "spatialThreshold": 25,
+          "timeThreshold": 1
+        },
+        "dimensions": { "rMin": 0, "rMax": 650, "z": 1500, "startAngle": 0.0, "spanningAngle": 360.0 },
+        "placement": [{ "x": 0.0, "y": 0.0, "z": 0}]
+      },
+      {
+        "name": "LXeFiducial",
+        "shape": "tubs",
+        "material": "LXe",
+        "parent": "LiquidXenon",
+        "color": [0.0, 0.0, 1.0, 0.5],
+        "active": true,
+        "clustering": {
+          "spatialThreshold": 25,
+          "timeThreshold": 1
+      },
+        "dimensions": { "rMin": 0.0, "rMax": 570, "z": 1340.0,  "startAngle": 0.0, "spanningAngle": 360.0  },
+        "placement": [{ "x": 0.0, "y": 0.0, "z": 0.0 }]
+      }
+
+    ]
+  }
+
+

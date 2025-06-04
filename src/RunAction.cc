@@ -14,6 +14,7 @@
 
 #include "G4AnalysisManager.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "G4Gamma.hh"
 #include "G4PhysicalConstants.hh"
 
@@ -32,13 +33,14 @@ namespace G4Sim{
  * It initializes and defines the analysis manager, creates and fills ntuples for event data, cross-section data,
  * and differential cross-section data, and performs actions at the beginning and end of a run.
  */
-RunAction::RunAction(EventAction* eventAction, GammaRayHelper* helper)
-  : fEventAction(eventAction), fGammaRayHelper(helper)
+RunAction::RunAction(EventAction* eventAction, GammaRayHelper* helper, NeutronHelper* helper2)
+  : fEventAction(eventAction), fGammaRayHelper(helper), fNeutronHelper(helper2)
+   
 {
   // set printing event number per each event
   G4RunManager::GetRunManager()->SetPrintProgress(1000);
   processMap = {
-
+       
     };
   nextBinIndex = processMap.size() + 1;
   // Create the generic analysis manager
@@ -73,7 +75,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   G4cout << "Runaction::BeginOfRunAction: E0 = " << primaryGeneratorAction->GetInitialEnergy() / keV << " keV" << G4endl;
   // Initialize the gamma-ray helper
   fGammaRayHelper->Initialize();
-
+  fNeutronHelper->Initialize();
   // initialize the analysis manager and ntuples
   InitializeNtuples();
 
@@ -84,6 +86,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   fEventAction->SetNumberOfScattersMax(fNumberOfScattersMax);
   G4cout <<"RunAction::BeginOfRunAction: Maximum energy deposit = "<< fMaxEnergy << G4endl;
   fEventAction->SetMaxEnergy(fMaxEnergy);
+  fEventAction->SetSimulationMode(simulationMode);
 
 }
 
@@ -130,14 +133,21 @@ void RunAction::InitializeNtuples(){
 
     // Creating histograms
     analysisManager->CreateH1("cost", "cos theta of Compton", 2200, -1.1, +1.1); // id = 0
-
-
     
-    analysisManager->CreateH1("proc", "Physical Processes",  100, 0, 100);  // id = 1, 20 bins for different processes
-    // Creating event data ntuple
+    analysisManager->CreateH1("proc", "Physical Processes",  100, 0, 100);  // id = 1,
+    analysisManager->CreateH1("cost_neutron", "cos theta of neutron elastic", 500, -1.1, +1.1); // id = 2
+    analysisManager->CreateH1("elastic_neutron", "E deposit of 1st neutron elastic", 250, 0, 10); // id = 3
+    analysisManager->CreateH2(
+    "E_recoil_vs_cos",                       // Histogram name (ID: 4)
+    "Recoil Energy vs CosTheta",            // Title
+    100, -1.0, 1.0,                          // X-axis: cos(theta) from -1 to 1
+    250, 0.0, 10.0                           // Y-axis: energy in keV from 0 to 10 keV
+);
+    // Creating event data ntuple 
     DefineEventNtuple();
     // Creating and filling physics data ntuple
     DefineCrossSectionNtuple();
+    DefineCrossSectionNtupleNeutron();
     // Creating and filling differential cross-section data ntuple
     // done from EventAction at the first event: since we the know the energy of the gamma rays. DefineDifferentialCrossSectionNtuple();
     // make a map for the process ntuple.
@@ -238,27 +248,31 @@ void RunAction::DefineDifferentialCrossSectionNtuple(G4double e0) const {
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 /**
- * @brief Defines the event ntuple for data analysis.
- * 
- * This function creates an event ntuple using the G4AnalysisManager class. 
- * 
- * Definition of the ntuple columns:
- * - ev = Event number
- * - w  = Event weight (only for fast simulation)
- * - type = Particle type (only for fast simulation: did the gamma scatter outside the detector prior to makingan interaction in the xenon?)
- * - xp = x position of the primary event
- * - yp = y position of the primary event
- * - zp = z position of the primary event
- * - eh = vector of energy deposited in the detector
- * - xh = vector of x position of the clusters in the detector
- * - yh = vector of y position of the clusters in the detector
- * - zh = vector of z position of the clusters in the detector
- * - wh = vector of weights (all the same, only for fast simulation)
- * - id = vector of detector IDs of the clusters
- * - edet = total energy deposited in each detector
- * - ndet = number of clusters in each detector
- * - nphot = number of photo-electric interactions in each detector
- * - ncomp = number of Compton interactions in each detector
+  * @brief Defines the event ntuple for data analysis.
+  * 
+  * This function creates an event ntuple using the G4AnalysisManager class. 
+  * 
+  * Definition of the ntuple columns:
+  * - ev = Event number
+  * - w  = Event weight (only for fast simulation)
+  * - type = Particle type (only for fast simulation: did the gamma scatter outside the detector prior to makingan interaction in the xenon?)
+  * - xp = x position of the primary event
+  * - yp = y position of the primary event
+  * - zp = z position of the primary event
+  * - eh = vector of energy deposited in the detector
+  * - xh = vector of x position of the clusters in the detector
+  * - yh = vector of y position of the clusters in the detector
+  * - zh = vector of z position of the clusters in the detector
+  * - wh = vector of weights (all the same, only for fast simulation)
+  * - id = vector of detector IDs of the clusters
+  * - edet = total energy deposited in each detector
+  * - ndet = number of clusters in each detector
+  * - nphot = number of photo-electric interactions in each detector
+  * - ncomp = number of Compton interactions in each detector
+  * - ncap = number of capture interactions in each detector
+  * - nelas = number of elastic scattering interactions in each detector
+  * - ninelas = number of inelastic scattering interactions in each detector
+  * - nfiss = number of fission interactions in each detector
  */
 void RunAction::DefineEventNtuple(){
   // Creating ntuple
@@ -283,6 +297,10 @@ void RunAction::DefineEventNtuple(){
   analysisManager->CreateNtupleIColumn(eventNtupleId, "ndet", fEventAction->GetNdet());
   analysisManager->CreateNtupleIColumn(eventNtupleId, "nphot", fEventAction->GetNphot());
   analysisManager->CreateNtupleIColumn(eventNtupleId, "ncomp", fEventAction->GetNcomp());
+  analysisManager->CreateNtupleIColumn(eventNtupleId, "ncap", fEventAction->GetNcap());
+  analysisManager->CreateNtupleIColumn(eventNtupleId, "nelas", fEventAction->GetNelas());
+  analysisManager->CreateNtupleIColumn(eventNtupleId, "ninelas", fEventAction->GetNinelas());
+  analysisManager->CreateNtupleIColumn(eventNtupleId, "nfiss", fEventAction->GetNfiss());
   analysisManager->FinishNtuple(eventNtupleId);
   G4cout <<"RunAction::BeginOfRunAction: Event data ntuple created. ID = "<< eventNtupleId << G4endl;
 }
@@ -317,7 +335,7 @@ void RunAction::DefineCrossSectionNtuple(){
   // Get analysis manager
   auto analysisManager = G4AnalysisManager::Instance();
   // Create ntuple for cross-section data
-  G4cout << "RunAction::BeginOfRunAction: Creating cross-section data ntuple" << G4endl;
+  G4cout << "RunAction::BeginOfRunAction: Creating cross-section data ntuple for photons" << G4endl;
 
   crossSectionNtupleId = analysisManager->CreateNtuple("gam", "Gamma-ray cross-section data");
   analysisManager->CreateNtupleSColumn(crossSectionNtupleId, "mat"); // material
@@ -358,6 +376,68 @@ void RunAction::DefineCrossSectionNtuple(){
         analysisManager->FillNtupleDColumn(crossSectionNtupleId, 2, energy / MeV);
         if (processName == "att") {
           analysisManager->FillNtupleDColumn(crossSectionNtupleId, 3, fGammaRayHelper->GetAttenuationLength(energy, mat)/cm);
+        } else {
+          analysisManager->FillNtupleDColumn(crossSectionNtupleId, 3, crossSection / barn);
+        }
+
+        analysisManager->AddNtupleRow(crossSectionNtupleId);
+      }
+    }
+    //G4cout << mat->GetName() <<" density = "<< mat->GetDensity() / (g/cm3) <<" attenutation at 1 MeV: " << fGammaRayHelper->GetMassAttenuationCoefficient(1.0 * MeV, mat) / (cm2/g)  << " " << G4endl;
+    //G4double thickness = 1.0 * cm;
+    //G4double att = fGammaRayHelper->GetMassAttenuationCoefficient(1.0 * MeV, mat) * mat->GetDensity() * thickness;
+    //G4cout << mat->GetName() <<" linear attenuation at 1 MeV for 1 cm thickness: " << att << " " << G4endl;
+  }
+  //G4cout << "units.... cm="<< cm << " MeV=" << MeV << " g= "<<g<<G4endl; 
+}
+
+void RunAction::DefineCrossSectionNtupleNeutron(){
+  // Get analysis manager
+  auto analysisManager = G4AnalysisManager::Instance();
+  // Create ntuple for cross-section data
+  G4cout << "RunAction::BeginOfRunAction: Creating cross-section data ntuple for neutrons" << G4endl;
+
+  crossSectionNtupleId = analysisManager->CreateNtuple("neutron", "Neutron cross-section data");
+  analysisManager->CreateNtupleSColumn(crossSectionNtupleId, "mat"); // material
+  analysisManager->CreateNtupleSColumn(crossSectionNtupleId, "proc"); // process
+  analysisManager->CreateNtupleDColumn(crossSectionNtupleId, "e"); // energy
+  analysisManager->CreateNtupleDColumn(crossSectionNtupleId, "att"); // attentuation length
+  analysisManager->FinishNtuple(crossSectionNtupleId);
+  G4cout <<"RunAction::BeginOfRunAction: Cross-section data ntuple for neutrons created. ID = "<< crossSectionNtupleId << G4endl;
+
+  //analysisManager->OpenFile();
+  // Calculate the cross-sections and fill the HDF5 ntuple
+  const G4MaterialTable* materialTable = G4Material::GetMaterialTable();
+  G4Material* material = (*materialTable)[2];
+  
+  double startEnergy =  0.01 * keV;
+  double endEnergy = 10.0 * MeV;
+  int numSteps = 2000;
+  double factor = std::pow(endEnergy / startEnergy, 1.0 / (numSteps - 1));
+
+  std::vector<G4String> processNames = {"elas", "inelas", "ncap", "fiss" ,"tot", "att"};
+
+  for (auto* mat : *materialTable) {
+    for (auto processName : processNames) {
+      for (int i = 0; i < numSteps; i++) {
+        double energy = startEnergy * std::pow(factor, i);
+        double crossSection = 0;
+        if (processName == "elas") {
+          crossSection = fNeutronHelper->GetElasticCrossSection(energy, mat);
+        } else if (processName == "inelas") {
+          crossSection = fNeutronHelper->GetInelasticCrossSection(energy, mat);
+        } else if (processName == "ncap") {
+          crossSection = fNeutronHelper->GetCaptureCrossSection(energy, mat);
+        } else if (processName == "fiss") {
+        crossSection = fNeutronHelper->GetFissionCrossSection(energy, mat);
+        } else if (processName == "tot") {
+        crossSection = fNeutronHelper->GetTotalCrossSection(energy, mat);
+        } 
+        analysisManager->FillNtupleSColumn(crossSectionNtupleId, 0, mat->GetName());
+        analysisManager->FillNtupleSColumn(crossSectionNtupleId, 1, processName);
+        analysisManager->FillNtupleDColumn(crossSectionNtupleId, 2, energy / MeV);
+        if (processName == "att") {
+          analysisManager->FillNtupleDColumn(crossSectionNtupleId, 3, fNeutronHelper->GetAttenuationLength(energy, mat)/cm);
         } else {
           analysisManager->FillNtupleDColumn(crossSectionNtupleId, 3, crossSection / barn);
         }

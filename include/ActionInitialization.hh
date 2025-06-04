@@ -3,6 +3,7 @@
 
 #include "G4VUserActionInitialization.hh"
 #include "GammaRayHelper.hh"
+#include "NeutronHelper.hh"
 #include "EventAction.hh"
 #include "TrackingAction.hh"
 
@@ -24,13 +25,14 @@ namespace G4Sim
 class ActionInitialization : public G4VUserActionInitialization
 {
   public:
-    ActionInitialization(GammaRayHelper* helper);
+    ActionInitialization(GammaRayHelper* helper, NeutronHelper* helper2);
     ~ActionInitialization() override = default;
 
     void BuildForMaster() const override;
     void Build() const override;
   private:
     GammaRayHelper* fGammaRayHelper;
+    NeutronHelper* fNeutronHelper;
 };
 
 }

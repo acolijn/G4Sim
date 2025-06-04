@@ -140,7 +140,7 @@ class Geant4Analyzer:
                 # Flatten jagged arrays
                 
                 # make sure that you do not apply the cuts on the hits on the other fields   
-                if ( (field == 'edet') or (field == 'ndet') or (field == 'ncomp') or (field == 'nphot') ):
+                if ( (field == 'edet') or (field == 'ndet') or (field == 'ncomp') or (field == 'nphot') or (field == 'ncap') or (field == 'nelas') or (field == 'ninelas') ):
                     data_field = data_field[cut]
                 else:
                     data_field = ak.flatten(data_field[cut_hit])
@@ -175,7 +175,7 @@ class Geant4Analyzer:
         if ax is None:
             fig, ax = plt.subplots()
 
-        # use the event weights for the event variables, otherwise use the hit weights
+        # Use event weights or hit weights as appropriate
         weights = self.data['w'] if len(self.data['w']) == len(self.data[variable]) else self.data['wh']
 
         # Calculate histogram and bin properties
@@ -205,7 +205,7 @@ class Geant4Analyzer:
             ax.set_xlabel('Energy (keV)')
         else:
             ax.set_xlabel(variable)
-    
+        
         ax.set_ylabel('Counts')
 
         if show:
@@ -301,6 +301,7 @@ class Geant4Analyzer:
                     ax.plot([0, 400], [z_source, z_source], '--', color='blue', linewidth=0.5)
                     ax.plot(r_source, z_source, 'bx', markersize=3)
 
+    
     def analyze_event_classifications(self, cut=None, cut_hit=None, ax=None, show=True):
         """
         Analyzes and prints the combinations of classifications in the current cut.

@@ -28,6 +28,7 @@ private:
     G4UIcmdWithAnInteger* fNumberOfScattersCmd;
     G4UIcmdWithADoubleAndUnit* fMaxEnergyCmd;
     G4UIcmdWithAString* fOutputFileNameCmd;
+    G4UIcmdWithAString* fSimulationModeCmd;
 
 };
 

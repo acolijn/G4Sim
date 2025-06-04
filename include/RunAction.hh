@@ -8,7 +8,7 @@
 #include "globals.hh"
 #include "GammaRayHelper.hh"
 #include "RunActionMessenger.hh"
-
+#include "NeutronHelper.hh"
 class G4Run;
 
 /**
@@ -32,7 +32,7 @@ class RunActionMessenger;
 class RunAction : public G4UserRunAction
 {
   public:
-    RunAction(EventAction *eventAction, GammaRayHelper *helper);
+    RunAction(EventAction *eventAction, GammaRayHelper *helper, NeutronHelper *helper2);
     ~RunAction();
 
     void BeginOfRunAction(const G4Run*) override;
@@ -41,6 +41,7 @@ class RunAction : public G4UserRunAction
     void InitializeNtuples();
     void DefineEventNtuple();
     void DefineCrossSectionNtuple();
+    void DefineCrossSectionNtupleNeutron();
     void DefineProcessMapNtuple();
     void DefineDifferentialCrossSectionNtuple(G4double energy) const;
 
@@ -48,12 +49,16 @@ class RunAction : public G4UserRunAction
     void SetNumberOfScatters(G4int value) { fNumberOfScattersMax = value; }
     void SetMaxEnergy(G4double value) { fMaxEnergy = value; }
     void SetOutputFileName(G4String value) { fOutputFileName = value; }
+    void SetSimulationMode(const G4String& mode) {simulationMode = mode;}
+    
+    G4String GetSimulationMode() const { return simulationMode; }
 
     void RecordProcessToHistogram(const G4String& processType);
-
+    
   private:
     EventAction* fEventAction = nullptr;
     GammaRayHelper* fGammaRayHelper = nullptr;
+    NeutronHelper* fNeutronHelper = nullptr;
     RunActionMessenger* fMessenger;
 
     int eventNtupleId = -1;
@@ -64,6 +69,9 @@ class RunAction : public G4UserRunAction
     G4int fNumberOfScattersMax = 0;
     G4double fMaxEnergy = 0.0;
     G4String fOutputFileName = "G4Sim.root";
+    G4String simulationMode = "photon";
+    
+
 
     std::map<G4String, G4int> processMap;
     G4int processNtupleId;
