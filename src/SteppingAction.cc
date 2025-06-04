@@ -589,8 +589,6 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
         }
     }
 
-
-    G4String processType = step->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName();
     G4String volume_name = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
     
     // check if particle is inside the xenon volume
@@ -619,7 +617,7 @@ void SteppingAction::AnalyzeStandardStep(const G4Step* step){
     
     // if process is elastic and energy is initial energy
     if ((processType == "hadElastic") && (volume_name == "LXeFiducial" )) {
-        G4double initialEnergy = track->GetVertexKineticEnergy()
+        G4double initialEnergy = track->GetVertexKineticEnergy();
 
         if ( G4double energyPre = step->GetPreStepPoint()->GetKineticEnergy() == initialEnergy){
           // Retrieve the momentum directions before and after the step
