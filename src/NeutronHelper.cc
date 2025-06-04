@@ -429,6 +429,9 @@ InteractionData NeutronHelper::DoElasticNeutronScatter(const G4Step* step, G4Thr
     return data; 
 }
 
+
+// dummy model, applyyourself function does not work. Could implement a custom model of the applyyourself function
+// look at how elastic scattering is done with the customHPElastic model
 InteractionData NeutronHelper::DoNeutronCapture(const G4Step* step, G4ThreeVector x0) { 
     G4double energy0 = step->GetPreStepPoint()->GetKineticEnergy(); 
  
@@ -489,7 +492,8 @@ InteractionData NeutronHelper::DoNeutronCapture(const G4Step* step, G4ThreeVecto
     return data; 
 }
 
-
+// dummy model, applyyourself function does not work. Could implement a custom model of the applyyourself function
+// look at how elastic scattering is done with the customHPElastic model
 InteractionData NeutronHelper::DoInelasticNeutronScatter(const G4Step* step, G4ThreeVector x0) 
 {
     G4double energy0 = step->GetPreStepPoint()->GetKineticEnergy();
